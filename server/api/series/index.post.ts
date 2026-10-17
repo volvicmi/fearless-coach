@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
 
   if (!name) throw createError({ statusCode: 400, statusMessage: 'name is required' })
   if (!(format in MAX_GAMES)) throw createError({ statusCode: 400, statusMessage: 'invalid format' })
-  if (!['hard', 'soft', 'off'].includes(fearless)) throw createError({ statusCode: 400, statusMessage: 'invalid fearless mode' })
+  if (!['hard', 'off'].includes(fearless)) throw createError({ statusCode: 400, statusMessage: 'invalid fearless mode' })
   if (!['blue', 'red'].includes(ourSide)) throw createError({ statusCode: 400, statusMessage: 'invalid side' })
 
   const db = useDb()

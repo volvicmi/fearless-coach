@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { DRAFT_ORDER } from '#shared/draft'
-import { stepLabel, suggestPicks, unavailableFor } from '#shared/coach'
+import { DRAFT_ORDER, otherSide, picksOf } from '#shared/draft'
+import { suggestPicks, unavailableNow } from '#shared/coach'
 import type { CoachContext } from '#shared/coach'
-import type { CoachAdvice } from '#shared/types'
+import type { CoachMode, CoachResult } from '#shared/types'
 
 const props = defineProps<{
   ctx: CoachContext
@@ -14,12 +14,13 @@ const emit = defineEmits<{ play: [champId: string] }>()
 
 const step = computed(() => DRAFT_ORDER[props.ctx.game.actions.length])
 const ourTurn = computed(() => step.value?.side === props.ctx.game.ourSide)
+const mode = computed<CoachMode>(() => (!step.value ? 'review' : ourTurn.value ? 'advice' : 'prediction'))
 const suggestions = computed(() => suggestPicks(props.ctx))
-const blocked = computed(() => (step.value ? unavailableFor(props.ctx, step.value) : new Set<string>()))
+const blocked = computed(() => unavailableNow(props.ctx))
 
-const advice = ref<CoachAdvice | null>(null)
-/** Draft length the advice was computed for: anything else means it's outdated. */
-const adviceAt = ref(-1)
+const result = ref<CoachResult | null>(null)
+/** Draft length the result was computed for: anything else means it's outdated. */
+const resultAt = ref(-1)
 const loading = ref(false)
 const error = ref('')
 const auto = ref(false)
@@ -39,10 +40,10 @@ async function ask() {
   loading.value = true
   error.value = ''
   try {
-    const res = await $fetch<CoachAdvice>('/api/coach', { method: 'POST', body: { gameId: props.gameId } })
+    const res = await $fetch<CoachResult>('/api/coach', { method: 'POST', body: { gameId: props.gameId } })
     if (props.ctx.game.actions.length === at) { // ignore answers that arrive after the next click
-      advice.value = res
-      adviceAt.value = at
+      result.value = res
+      resultAt.value = at
     }
   }
   catch (e: any) {
@@ -53,35 +54,65 @@ async function ask() {
   }
 }
 
+/** Auto mode asks on our turns and once for the final review; predictions stay manual to save quota. */
 function maybeAutoAsk() {
-  if (auto.value && ourTurn.value && !loading.value && adviceAt.value !== props.ctx.game.actions.length) ask()
+  if (!auto.value || loading.value || resultAt.value === props.ctx.game.actions.length) return
+  if (mode.value === 'advice' || mode.value === 'review') ask()
 }
 watch(() => props.ctx.game.actions.length, maybeAutoAsk)
 
-const fresh = computed(() => advice.value && adviceAt.value === props.ctx.game.actions.length)
+const fresh = computed(() => !!result.value && resultAt.value === props.ctx.game.actions.length)
+const advice = computed(() => (result.value && result.value.kind !== 'review' ? result.value : null))
+const review = computed(() => (result.value?.kind === 'review' ? result.value : null))
 
-function play(champId: string) {
-  if (ourTurn.value && !blocked.value.has(champId)) emit('play', champId)
+const copied = ref(false)
+/** Free fallback: copy the whole coach prompt to paste into any AI chat. */
+async function copyContext() {
+  error.value = ''
+  try {
+    const { text } = await $fetch<{ text: string }>('/api/coach/prompt', { method: 'POST', body: { gameId: props.gameId } })
+    await navigator.clipboard.writeText(text)
+    copied.value = true
+    setTimeout(() => (copied.value = false), 2000)
+  }
+  catch (e: any) {
+    error.value = e?.data?.statusMessage ?? 'Could not copy the context'
+  }
 }
 
+/** Plays a suggestion on our turn, or records a correct prediction on theirs. */
+function play(champId: string) {
+  if (step.value && !blocked.value.has(champId)) emit('play', champId)
+}
+
+const ASK_LABEL: Record<CoachMode, string> = {
+  advice: 'Ask the coach',
+  prediction: 'Predict their move',
+  review: 'Review the draft',
+}
+const IDLE_HINT: Record<CoachMode, string> = {
+  advice: 'The coach reads the draft, your pools and the Fearless locks, then suggests up to 3 options.',
+  prediction: 'Their turn: the coach predicts their 3 most likely choices and how to answer.',
+  review: 'Draft complete: get both comps\' estimated win rate, game plans and how to counter them.',
+}
 const CONFIDENCE: Record<string, string> = { high: 'text-emerald-400', medium: 'text-amber-300', low: 'text-zinc-400' }
+
+const us = computed(() => props.ctx.game.ourSide)
+const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
 </script>
 
 <template>
   <section class="grid gap-4 rounded-lg border border-zinc-800 p-4 lg:grid-cols-[1fr_1.4fr] xl:grid-cols-1">
     <!-- Instant engine suggestions -->
-    <div class="flex flex-col gap-2">
+    <div v-if="mode !== 'review'" class="flex flex-col gap-2">
       <h3 class="text-sm font-semibold">
         Suggestions
         <span class="font-normal text-zinc-500">· from your pools</span>
       </h3>
-      <p v-if="!step" class="text-xs text-zinc-500">
-        Draft complete.
+      <p v-if="!ourTurn" class="text-xs text-zinc-500">
+        Waiting for their {{ step?.type }}…
       </p>
-      <p v-else-if="!ourTurn" class="text-xs text-zinc-500">
-        Waiting for their {{ step.type }}…
-      </p>
-      <p v-else-if="step.type === 'ban'" class="text-xs text-zinc-500">
+      <p v-else-if="step?.type === 'ban'" class="text-xs text-zinc-500">
         Ban phase: ask the AI coach for ban targets.
       </p>
       <p v-else-if="!ctx.team.length" class="text-xs text-zinc-500">
@@ -110,35 +141,45 @@ const CONFIDENCE: Record<string, string> = { high: 'text-emerald-400', medium: '
     </div>
 
     <!-- AI coach -->
-    <div class="flex flex-col gap-2">
-      <div class="flex items-center gap-3">
+    <div class="flex flex-col gap-2" :class="mode === 'review' && 'lg:col-span-2 xl:col-span-1'">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h3 class="text-sm font-semibold">
           AI coach
         </h3>
-        <label class="flex items-center gap-1.5 text-xs text-zinc-400">
+        <label class="flex items-center gap-1.5 text-xs text-zinc-400" title="Asks automatically on our turns and for the final review">
           <input v-model="auto" type="checkbox" class="accent-amber-400">
-          Auto on our turns
+          Auto
         </label>
         <button
           type="button"
-          class="ml-auto rounded-md bg-amber-400 px-3 py-1 text-xs font-semibold text-zinc-950 hover:bg-amber-300 disabled:opacity-40"
-          :disabled="!ourTurn || loading"
+          class="ml-auto rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+          title="Copy the draft context to paste into any AI chat (free)"
+          @click="copyContext"
+        >
+          {{ copied ? 'Copied ✓' : 'Copy context' }}
+        </button>
+        <button
+          type="button"
+          class="rounded-md bg-amber-400 px-3 py-1 text-xs font-semibold text-zinc-950 hover:bg-amber-300 disabled:opacity-40"
+          :disabled="loading"
           @click="ask"
         >
-          {{ loading ? 'Thinking…' : 'Ask the coach' }}
+          {{ loading ? 'Thinking…' : ASK_LABEL[mode] }}
         </button>
       </div>
 
       <p v-if="error" class="text-xs text-red-400">
         {{ error }}
       </p>
-      <p v-else-if="!advice && !loading" class="text-xs text-zinc-500">
-        On your turn, the coach reads the draft, your pools and the Fearless locks, then suggests up to 3 options.
+      <p v-else-if="!result && !loading" class="text-xs text-zinc-500">
+        {{ IDLE_HINT[mode] }}
       </p>
 
+      <!-- Our turn: advice / their turn: prediction -->
       <div v-if="advice" class="flex flex-col gap-2" :class="!fresh && 'opacity-40'">
         <p class="text-xs text-zinc-500">
-          {{ advice.step }} · {{ (advice.ms / 1000).toFixed(1) }}s
+          <span v-if="advice.kind === 'prediction'" class="font-semibold text-side-red">Prediction · </span>
+          {{ advice.step }} · {{ advice.model }} · {{ (advice.ms / 1000).toFixed(1) }}s
           <span v-if="!fresh" class="text-amber-300"> · outdated, the draft moved on</span>
         </p>
         <button
@@ -147,6 +188,7 @@ const CONFIDENCE: Record<string, string> = { high: 'text-emerald-400', medium: '
           type="button"
           class="flex items-start gap-2 rounded-md p-1.5 text-left hover:bg-zinc-800 disabled:cursor-default disabled:hover:bg-transparent"
           :disabled="!fresh"
+          :title="advice.kind === 'prediction' ? 'Click if they take it' : 'Click to play it'"
           @click="play(r.champId)"
         >
           <img :src="iconUrl(r.champId)" :alt="nameOf(r.champId)" class="size-10 rounded">
@@ -163,11 +205,39 @@ const CONFIDENCE: Record<string, string> = { high: 'text-emerald-400', medium: '
           <span class="font-semibold text-side-red">Them:</span> {{ advice.enemyRead }}
         </p>
         <p v-if="advice.plan" class="text-xs">
-          <span class="font-semibold text-emerald-400">Plan:</span> {{ advice.plan }}
+          <span class="font-semibold text-emerald-400">{{ advice.kind === 'prediction' ? 'Our answer:' : 'Plan:' }}</span> {{ advice.plan }}
         </p>
         <p v-for="w in advice.warnings" :key="w" class="text-xs text-amber-300">
           ⚠ {{ w }}
         </p>
+      </div>
+
+      <!-- Draft complete: review -->
+      <div v-if="review" class="flex flex-col gap-3" :class="!fresh && 'opacity-40'">
+        <div>
+          <div class="flex h-2 overflow-hidden rounded-full">
+            <div class="bg-side-blue" :style="{ width: `${review.blue.winRate}%` }" />
+            <div class="bg-side-red" :style="{ width: `${review.red.winRate}%` }" />
+          </div>
+          <p class="mt-1 text-[11px] text-zinc-500">
+            Estimated by the AI from the draft only (not player skill) · {{ review.model }} · {{ (review.ms / 1000).toFixed(1) }}s
+          </p>
+        </div>
+        <p class="text-xs">
+          <span class="font-semibold text-emerald-400">Verdict:</span> {{ review.verdict }}
+        </p>
+        <div class="grid gap-3 lg:grid-cols-2 xl:grid-cols-1">
+          <CompReviewCard
+            v-for="side in [us, otherSide(us)]"
+            :key="side"
+            :side="side"
+            :is-us="side === us"
+            :comp="review[side]"
+            :champs="champsOf(side)"
+            :icon-url="iconUrl"
+            :name-of="nameOf"
+          />
+        </div>
       </div>
     </div>
   </section>

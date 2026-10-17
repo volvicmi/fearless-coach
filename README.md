@@ -11,11 +11,18 @@ npm run dev
 
 Open http://localhost:3000. Needs Node 22.13+ (uses the built-in `node:sqlite`); data lives in `data/coach.db`.
 
-For the AI coach, copy `.env.example` to `.env`, set `ANTHROPIC_API_KEY`, and restart `npm run dev`.
+For the AI coach, copy `.env.example` to `.env`, set **one** key, and restart `npm run dev`:
+
+- `GEMINI_API_KEY` (free, from https://aistudio.google.com/apikey). Free models are tried in order
+  (`gemini-3.8-flash`, then 3.6 Flash, Flash-Lite models, 2.5…): when one hits its daily quota, the next one answers.
+- `ANTHROPIC_API_KEY` (paid, better advice), default model `claude-opus-5-5`
+
+With both keys, Gemini is used unless `NUXT_COACH_PROVIDER=claude`. Without any key, **Copy context**
+puts the full coach prompt in the clipboard to paste into any AI chat.
 
 ## What works today
 
-- **Series**: Bo1/Bo3/Bo5, Fearless rule `hard` (picks locked for both teams), `soft` (each team loses only its own picks) or `off`.
+- **Series**: Bo1/Bo3/Bo5, Fearless (a champion picked in an earlier game is locked for both teams) or normal draft.
 - **Draft board**: standard 20-step tournament order, skip ban, undo (`Ctrl+Z`), side choice per game, winner and score.
 - **Fast input**: type a few letters, `Enter` takes the first available champion.
 - **Fearless locks** are computed from earlier games' picks (bans never carry over) and shown greyed out with the game that burned them.
@@ -23,7 +30,7 @@ For the AI coach, copy `.env.example` to `.env`, set `ANTHROPIC_API_KEY`, and re
 - **Team tab**: players per role and champion pools with tiers S/A/B/C (click an icon to change tier).
 - **Suggestions** (instant, no AI): ranks our open roles' pool picks by tier, flex value, damage mix and
   Fearless economy (penalty for burning the last strong picks of a thin pool early in a series).
-- **AI coach** (Claude): reads the draft, pools, Fearless locks and the suggestion shortlist, answers in French
+- **AI coach** (Gemini free or Claude): reads the draft, pools, Fearless locks and the suggestion shortlist, answers in French
   with up to 3 picks/bans + enemy read + plan. Manual button or auto on our turns. Click a recommendation to play it.
 
 ## Layout

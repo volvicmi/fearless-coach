@@ -31,8 +31,7 @@ async function remove(s: Series) {
 }
 
 const FEARLESS_LABEL: Record<FearlessMode, string> = {
-  hard: 'Hard fearless',
-  soft: 'Soft fearless',
+  hard: 'Fearless',
   off: 'Normal draft',
 }
 </script>
@@ -66,11 +65,10 @@ const FEARLESS_LABEL: Record<FearlessMode, string> = {
         </label>
       </div>
       <label class="flex flex-col gap-1 text-sm">
-        Fearless rule
+        Draft mode
         <select v-model="form.fearless" class="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5">
-          <option value="hard">Hard: picks are locked for both teams</option>
-          <option value="soft">Soft: each team loses only its own picks</option>
-          <option value="off">Off: normal draft</option>
+          <option value="hard">Fearless</option>
+          <option value="off">Normal draft</option>
         </select>
       </label>
       <p v-if="error" class="text-sm text-red-400">

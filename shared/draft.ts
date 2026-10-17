@@ -1,6 +1,7 @@
 export type Side = 'blue' | 'red'
 export type ActionType = 'ban' | 'pick'
-export type FearlessMode = 'hard' | 'soft' | 'off'
+/** 'hard' = Fearless draft, 'off' = normal draft (stored as is in the database) */
+export type FearlessMode = 'hard' | 'off'
 export type SeriesFormat = 'Bo1' | 'Bo3' | 'Bo5'
 
 export interface DraftStep {
@@ -41,6 +42,7 @@ export interface GameDraft {
   ourSide: Side
   /** Champion ids (Data Dragon `id`) in DRAFT_ORDER order; its length is the current step. */
   actions: string[]
+  winner?: Side | null
 }
 
 export const otherSide = (side: Side): Side => (side === 'blue' ? 'red' : 'blue')
@@ -59,27 +61,16 @@ export function picksOf(actions: string[], side: Side): string[] {
 }
 
 /**
- * Champions the team playing `side` in `current` can no longer pick, mapped to the game that burned them.
- * Fearless only carries over picks, never bans.
- * - hard: a champion picked by either team in an earlier game is locked for both teams
- * - soft: a team only loses the champions it picked itself
+ * Champions nobody can pick in `current`, mapped to the game that burned them.
+ * Fearless: a champion picked by either team in an earlier game is locked for both teams. Bans never carry over.
  */
-export function fearlessLocked(
-  mode: FearlessMode,
-  games: GameDraft[],
-  current: GameDraft,
-  side: Side,
-): Map<string, number> {
+export function fearlessLocked(mode: FearlessMode, games: GameDraft[], current: GameDraft): Map<string, number> {
   const locked = new Map<string, number>()
   if (mode === 'off') return locked
-  const actingIsUs = side === current.ourSide
-
   for (const g of games) {
     if (g.n >= current.n) continue
-    for (const s of ['blue', 'red'] as const) {
-      const pickedByUs = s === g.ourSide
-      if (mode === 'soft' && pickedByUs !== actingIsUs) continue
-      for (const champ of picksOf(g.actions, s)) if (!locked.has(champ)) locked.set(champ, g.n)
+    for (const champ of [...picksOf(g.actions, 'blue'), ...picksOf(g.actions, 'red')]) {
+      if (!locked.has(champ)) locked.set(champ, g.n)
     }
   }
   return locked

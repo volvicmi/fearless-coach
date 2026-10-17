@@ -30,13 +30,15 @@ const score = computed(() => {
   return { us, them }
 })
 
-/** Locked pools for the active game, from each team's point of view. */
-const locked = computed(() => {
+/** Champions locked for both teams in the active game, grouped by the game that burned them. */
+const lockedByGame = computed(() => {
   const g = game.value
-  if (!g) return { us: [], them: [] }
-  const list = (side: Side) =>
-    [...fearlessLocked(series.value.fearless, data.value!.games, g, side)].map(([champ, n]) => ({ champ, n }))
-  return { us: list(g.ourSide), them: list(otherSide(g.ourSide)) }
+  if (!g) return []
+  const groups = new Map<number, string[]>()
+  for (const [champ, n] of fearlessLocked(series.value.fearless, data.value!.games, g)) {
+    groups.set(n, [...(groups.get(n) ?? []), champ])
+  }
+  return [...groups].map(([n, champs]) => ({ n, champs }))
 })
 
 const coachCtx = computed<CoachContext | undefined>(() => game.value && {
@@ -80,7 +82,7 @@ async function nextGame() {
         </h1>
         <p class="text-sm text-zinc-400">
           vs {{ series.opponent || '?' }} · {{ series.format }} ·
-          <span class="capitalize">{{ series.fearless }}</span> fearless ·
+          {{ series.fearless === 'off' ? 'Normal draft' : 'Fearless' }} ·
           <span class="font-semibold text-zinc-200">{{ score.us }} – {{ score.them }}</span>
         </p>
       </div>
@@ -163,22 +165,23 @@ async function nextGame() {
         />
       </div>
 
-      <section v-if="series.fearless !== 'off'" class="grid gap-4 md:grid-cols-2">
-        <div v-for="team in (['us', 'them'] as const)" :key="team" class="rounded-lg border border-zinc-800 p-3">
-          <h3 class="mb-2 text-sm font-semibold">
-            Locked for {{ team === 'us' ? 'us' : 'them' }}
-            <span class="font-normal text-zinc-500">({{ locked[team].length }})</span>
-          </h3>
-          <p v-if="!locked[team].length" class="text-xs text-zinc-500">
-            Nothing locked yet: Fearless locks start from game 2.
-          </p>
+      <section v-if="series.fearless !== 'off'" class="rounded-lg border border-zinc-800 p-3">
+        <h3 class="mb-2 text-sm font-semibold">
+          Locked by Fearless
+          <span class="font-normal text-zinc-500">· both teams ({{ lockedByGame.reduce((n, g) => n + g.champs.length, 0) }})</span>
+        </h3>
+        <p v-if="!lockedByGame.length" class="text-xs text-zinc-500">
+          Nothing locked yet: picks from this game get locked from the next one.
+        </p>
+        <div v-for="group in lockedByGame" :key="group.n" class="flex items-center gap-2 py-0.5">
+          <span class="w-7 text-xs text-zinc-500">G{{ group.n }}</span>
           <div class="flex flex-wrap gap-1">
             <img
-              v-for="l in locked[team]"
-              :key="l.champ"
-              :src="iconUrl(l.champ)"
-              :alt="nameOf(l.champ)"
-              :title="`${nameOf(l.champ)} · G${l.n}`"
+              v-for="champ in group.champs"
+              :key="champ"
+              :src="iconUrl(champ)"
+              :alt="nameOf(champ)"
+              :title="nameOf(champ)"
               class="size-8 rounded grayscale"
             >
           </div>

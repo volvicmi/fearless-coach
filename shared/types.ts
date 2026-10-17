@@ -51,7 +51,33 @@ export interface PoolEntry {
   note: string
 }
 
+/** advice = our turn, prediction = their turn, review = draft complete */
+export type CoachMode = 'advice' | 'prediction' | 'review'
+
+export interface CompReview {
+  /** Estimated win chance from the draft alone, 0-100 (blue + red = 100) */
+  winRate: number
+  archetype: string
+  winConditions: string[]
+  powerSpikes: string
+  gamePlan: string
+  /** How the other team beats this comp */
+  howToCounter: string[]
+}
+
+export interface CoachReview {
+  kind: 'review'
+  blue: CompReview
+  red: CompReview
+  verdict: string
+  model: string
+  ms: number
+}
+
+export type CoachResult = CoachAdvice | CoachReview
+
 export interface CoachAdvice {
+  kind: 'advice' | 'prediction'
   /** e.g. "Our pick 2" */
   step: string
   recommendations: { champId: string, player: string | null, confidence: 'high' | 'medium' | 'low', reason: string }[]

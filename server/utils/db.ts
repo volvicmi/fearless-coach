@@ -41,6 +41,8 @@ export function useDb(): DatabaseSync {
       note      TEXT NOT NULL DEFAULT '',
       PRIMARY KEY (player_id, champ_id)
     );
+    -- 'soft' Fearless was dropped: there is only one Fearless rule.
+    UPDATE series SET fearless = 'hard' WHERE fearless = 'soft';
   `)
   return db
 }

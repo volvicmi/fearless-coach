@@ -4,8 +4,11 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-10-01',
   devtools: { enabled: false },
   css: ['~/assets/css/main.css'],
-  // Override with NUXT_CLAUDE_MODEL / NUXT_CLAUDE_EFFORT in .env
+  // Override with NUXT_COACH_PROVIDER, NUXT_GEMINI_MODELS, NUXT_CLAUDE_MODEL, NUXT_CLAUDE_EFFORT in .env
   runtimeConfig: {
+    coachProvider: 'auto', // auto | gemini | claude
+    // Free Google AI Studio models, tried in order: each has its own daily quota.
+    geminiModels: 'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite',
     claudeModel: 'claude-opus-5-5',
     claudeEffort: 'low', // low = fastest answers during a live draft
   },

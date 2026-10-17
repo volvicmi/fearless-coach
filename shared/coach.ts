@@ -23,10 +23,10 @@ export interface Suggestion {
   reasons: string[]
 }
 
-/** Champions nobody can take at this step: already banned / picked this game, or Fearless-locked for the acting side. */
-export function unavailableFor(ctx: CoachContext, step: DraftStep): Set<string> {
+/** Champions nobody can take now: already banned / picked this game, or Fearless-locked. */
+export function unavailableNow(ctx: CoachContext): Set<string> {
   const out = new Set(ctx.game.actions.filter(a => a !== NO_BAN))
-  for (const champ of fearlessLocked(ctx.fearless, ctx.games, ctx.game, step.side).keys()) out.add(champ)
+  for (const champ of fearlessLocked(ctx.fearless, ctx.games, ctx.game).keys()) out.add(champ)
   return out
 }
 
@@ -59,7 +59,7 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
   if (!step || step.type !== 'pick' || step.side !== ctx.game.ourSide) return []
 
   const byId = new Map(ctx.champions.map(c => [c.id, c]))
-  const blocked = unavailableFor(ctx, step)
+  const blocked = unavailableNow(ctx)
   const ourPicks = picksOf(ctx.game.actions, ctx.game.ourSide)
   const filled = new Set(assignRoles(ourPicks, ctx.team).values())
   const openRoles = ROLES.filter(r => !filled.has(r))

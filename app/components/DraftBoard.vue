@@ -22,10 +22,8 @@ const disabled = computed(() => {
   props.game.actions.forEach((champ, i) => {
     if (champ !== NO_BAN) reasons.set(champ, DRAFT_ORDER[i]!.type === 'ban' ? 'Banned' : 'Picked')
   })
-  if (current.value) {
-    for (const [champ, n] of fearlessLocked(props.fearless, props.games, props.game, current.value.side)) {
-      if (!reasons.has(champ)) reasons.set(champ, `Fearless · played in G${n}`)
-    }
+  for (const [champ, n] of fearlessLocked(props.fearless, props.games, props.game)) {
+    if (!reasons.has(champ)) reasons.set(champ, `Fearless · played in G${n}`)
   }
   return reasons
 })
