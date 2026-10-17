@@ -1,0 +1,82 @@
+<script setup lang="ts">
+import type { Champion } from '#shared/types'
+
+const props = defineProps<{
+  champions: Champion[]
+  /** champion id → why it can't be picked right now */
+  disabled: Map<string, string>
+  iconUrl: (id: string) => string
+  active: boolean
+}>()
+const emit = defineEmits<{ select: [id: string] }>()
+
+const TAGS = ['Fighter', 'Tank', 'Mage', 'Assassin', 'Marksman', 'Support']
+const search = ref('')
+const tag = ref<string | null>(null)
+const input = ref<HTMLInputElement>()
+
+const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+const filtered = computed(() => {
+  const q = normalize(search.value)
+  return props.champions.filter(c =>
+    (!q || normalize(c.name).includes(q) || normalize(c.id).includes(q))
+    && (!tag.value || c.tags.includes(tag.value)))
+})
+
+function choose(id: string) {
+  if (!props.active || props.disabled.has(id)) return
+  emit('select', id)
+  search.value = ''
+  input.value?.focus()
+}
+
+/** Enter picks the first available match: fast input during a live draft. */
+function onEnter() {
+  const first = filtered.value.find(c => !props.disabled.has(c.id))
+  if (first) choose(first.id)
+}
+
+onMounted(() => input.value?.focus())
+</script>
+
+<template>
+  <div class="flex min-h-0 flex-col gap-3">
+    <div class="flex flex-wrap items-center gap-2">
+      <input
+        ref="input"
+        v-model="search"
+        type="search"
+        placeholder="Search champion… (Enter = first match)"
+        class="min-w-48 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm outline-none focus:border-amber-400"
+        @keydown.enter.prevent="onEnter"
+      >
+      <button
+        v-for="t in TAGS"
+        :key="t"
+        type="button"
+        class="rounded-md border px-2 py-1 text-xs"
+        :class="tag === t ? 'border-amber-400 text-amber-300' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200'"
+        @click="tag = tag === t ? null : t"
+      >
+        {{ t }}
+      </button>
+    </div>
+
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1.5 overflow-y-auto pr-1">
+      <button
+        v-for="c in filtered"
+        :key="c.id"
+        type="button"
+        :title="disabled.get(c.id) ? `${c.name} · ${disabled.get(c.id)}` : c.name"
+        :disabled="!active || disabled.has(c.id)"
+        class="group flex flex-col items-center gap-0.5 rounded-md p-0.5 text-center"
+        :class="disabled.has(c.id) ? 'cursor-not-allowed opacity-25 grayscale' : 'hover:bg-zinc-800'"
+        @click="choose(c.id)"
+      >
+        <img :src="iconUrl(c.id)" :alt="c.name" loading="lazy" class="size-12 rounded">
+        <span class="w-full truncate text-[10px] text-zinc-400 group-hover:text-zinc-200">{{ c.name }}</span>
+      </button>
+    </div>
+  </div>
+</template>

@@ -1,0 +1,86 @@
+export type Side = 'blue' | 'red'
+export type ActionType = 'ban' | 'pick'
+export type FearlessMode = 'hard' | 'soft' | 'off'
+export type SeriesFormat = 'Bo1' | 'Bo3' | 'Bo5'
+
+export interface DraftStep {
+  side: Side
+  type: ActionType
+  /** 0-4: position within this side's bans or picks */
+  slot: number
+}
+
+/** Marker stored in `actions` when a team skips a ban. */
+export const NO_BAN = 'none'
+
+export const MAX_GAMES: Record<SeriesFormat, number> = { Bo1: 1, Bo3: 3, Bo5: 5 }
+
+const step = (side: Side, type: ActionType, slot: number): DraftStep => ({ side, type, slot })
+
+/** Standard tournament draft: 3 bans each, 3 picks each, 2 bans each, 2 picks each. */
+export const DRAFT_ORDER: DraftStep[] = [
+  step('blue', 'ban', 0), step('red', 'ban', 0),
+  step('blue', 'ban', 1), step('red', 'ban', 1),
+  step('blue', 'ban', 2), step('red', 'ban', 2),
+
+  step('blue', 'pick', 0),
+  step('red', 'pick', 0), step('red', 'pick', 1),
+  step('blue', 'pick', 1), step('blue', 'pick', 2),
+  step('red', 'pick', 2),
+
+  step('red', 'ban', 3), step('blue', 'ban', 3),
+  step('red', 'ban', 4), step('blue', 'ban', 4),
+
+  step('red', 'pick', 3),
+  step('blue', 'pick', 3), step('blue', 'pick', 4),
+  step('red', 'pick', 4),
+]
+
+export interface GameDraft {
+  n: number
+  ourSide: Side
+  /** Champion ids (Data Dragon `id`) in DRAFT_ORDER order; its length is the current step. */
+  actions: string[]
+}
+
+export const otherSide = (side: Side): Side => (side === 'blue' ? 'red' : 'blue')
+
+/** The 5 ban or pick slots of one side, `null` where not played yet. */
+export function slotsOf(actions: string[], side: Side, type: ActionType): (string | null)[] {
+  const slots: (string | null)[] = [null, null, null, null, null]
+  DRAFT_ORDER.forEach((s, i) => {
+    if (s.side === side && s.type === type && i < actions.length) slots[s.slot] = actions[i]!
+  })
+  return slots
+}
+
+export function picksOf(actions: string[], side: Side): string[] {
+  return slotsOf(actions, side, 'pick').filter((c): c is string => !!c)
+}
+
+/**
+ * Champions the team playing `side` in `current` can no longer pick, mapped to the game that burned them.
+ * Fearless only carries over picks, never bans.
+ * - hard: a champion picked by either team in an earlier game is locked for both teams
+ * - soft: a team only loses the champions it picked itself
+ */
+export function fearlessLocked(
+  mode: FearlessMode,
+  games: GameDraft[],
+  current: GameDraft,
+  side: Side,
+): Map<string, number> {
+  const locked = new Map<string, number>()
+  if (mode === 'off') return locked
+  const actingIsUs = side === current.ourSide
+
+  for (const g of games) {
+    if (g.n >= current.n) continue
+    for (const s of ['blue', 'red'] as const) {
+      const pickedByUs = s === g.ourSide
+      if (mode === 'soft' && pickedByUs !== actingIsUs) continue
+      for (const champ of picksOf(g.actions, s)) if (!locked.has(champ)) locked.set(champ, g.n)
+    }
+  }
+  return locked
+}
