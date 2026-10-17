@@ -34,10 +34,10 @@ const label = (i: number) => {
 
 /** The four phases of a tournament draft; the other team's turns are shown as markers between ours. */
 const PHASES = [
-  { label: 'Ban phase 1', from: 0, to: 5 },
-  { label: 'Pick phase 1', from: 6, to: 11 },
-  { label: 'Ban phase 2', from: 12, to: 15 },
-  { label: 'Pick phase 2', from: 16, to: 19 },
+  { label: 'Phase de bans 1', from: 0, to: 5 },
+  { label: 'Phase de picks 1', from: 6, to: 11 },
+  { label: 'Phase de bans 2', from: 12, to: 15 },
+  { label: 'Phase de picks 2', from: 16, to: 19 },
 ]
 type PhaseItem = { kind: 'ours', i: number } | { kind: 'theirs', labels: string[] }
 const phases = computed(() => PHASES.map((p) => {
@@ -111,7 +111,7 @@ useChampionDrag(root, (champ: string, target: DropTarget, index?: number, from?:
 })
 
 /** Champions already in the selected step can't be added there twice. */
-const disabled = computed(() => new Map((props.scenario.slots[selected.value] ?? []).map(c => [c, 'Already in this step'])))
+const disabled = computed(() => new Map((props.scenario.slots[selected.value] ?? []).map(c => [c, 'Déjà dans cette étape'])))
 
 // The parent keys this component by scenario id, so local state starts fresh for each scenario.
 const notes = ref(props.scenario.notes)
@@ -146,7 +146,7 @@ watch(notes, (text) => {
         </button>
       </div>
       <div class="flex items-center gap-1 text-sm">
-        <span class="text-zinc-400">We are</span>
+        <span class="text-zinc-400">Nous sommes</span>
         <button
           v-for="s in (['blue', 'red'] as const)"
           :key="s"
@@ -155,15 +155,15 @@ watch(notes, (text) => {
           :class="scenario.ourSide === s ? (s === 'blue' ? 'bg-side-blue' : 'bg-side-red') : 'bg-zinc-900 text-zinc-400 hover:text-zinc-100'"
           @click="switchSide(s)"
         >
-          {{ s }}
+          {{ s === 'blue' ? 'Bleu' : 'Rouge' }}
         </button>
       </div>
       <div class="ml-auto flex gap-2">
         <button type="button" class="cursor-pointer rounded-md border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800" @click="emit('duplicate')">
-          Duplicate
+          Dupliquer
         </button>
         <button type="button" class="cursor-pointer rounded-md px-3 py-1 text-xs text-zinc-500 hover:text-red-400" @click="emit('remove')">
-          Delete
+          Supprimer
         </button>
       </div>
     </div>
@@ -179,7 +179,7 @@ watch(notes, (text) => {
             <!-- The other team's turn: only a marker, we don't plan their draft -->
             <div v-if="item.kind === 'theirs'" class="flex items-center gap-2 pl-2 text-[11px] text-zinc-600">
               <span class="h-px w-6 bg-zinc-800" />
-              Their turn: {{ item.labels.join(' · ') }}
+              Leur tour : {{ item.labels.join(' · ') }}
               <span class="h-px flex-1 bg-zinc-800" />
             </div>
 
@@ -199,18 +199,18 @@ watch(notes, (text) => {
                 :class="phase.isBan ? 'text-zinc-400' : scenario.ourSide === 'blue' ? 'text-side-blue' : 'text-side-red'"
               >
                 {{ label(item.i) }}
-                <span class="text-[10px] font-normal text-zinc-600">step {{ item.i + 1 }}</span>
+                <span class="text-[10px] font-normal text-zinc-600">étape {{ item.i + 1 }}</span>
               </span>
               <div data-tier-items class="flex flex-wrap items-center gap-1.5">
                 <span v-if="!scenario.slots[item.i]!.length" class="text-xs text-zinc-600">
-                  {{ phase.isBan ? 'Drop or click a ban' : 'Drop or click a champion' }}
+                  {{ phase.isBan ? 'Dépose ou clique sur un ban' : 'Dépose ou clique sur un champion' }}
                 </span>
                 <div v-for="(c, n) in scenario.slots[item.i]" :key="c" class="group relative">
                   <div
                     :data-drag-champ="c"
                     :data-drag-from="String(item.i)"
                     class="flex cursor-grab touch-none flex-col items-center"
-                    :title="`${nameOf(c)}${n === 0 ? ' · main choice' : ` · option ${n + 1}`} · drag to reorder, move or remove`"
+                    :title="`${nameOf(c)}${n === 0 ? ' · choix principal' : ` · option ${n + 1}`} · glisse pour réordonner, déplacer ou retirer`"
                   >
                     <img
                       :src="iconUrl(c)"
@@ -229,7 +229,7 @@ watch(notes, (text) => {
                   <button
                     type="button"
                     class="absolute -right-1 -top-1 hidden size-5 cursor-pointer place-items-center rounded-full bg-zinc-950 text-zinc-400 shadow ring-1 ring-zinc-700 hover:bg-red-600 hover:text-white group-hover:grid"
-                    :title="`Remove ${nameOf(c)}`"
+                    :title="`Retirer ${nameOf(c)}`"
                     @click.stop="removeFrom(item.i, c)"
                   >
                     <svg viewBox="0 0 12 12" class="size-2.5" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
@@ -244,8 +244,8 @@ watch(notes, (text) => {
       <!-- Champion list: drag source, and drop back here to remove -->
       <aside data-tier-drop="remove" class="flex flex-col gap-2 rounded-lg border border-zinc-800 p-3 xl:sticky xl:top-4 xl:h-[720px]">
         <p class="text-xs text-zinc-400">
-          Filling <span class="font-semibold text-amber-300">{{ label(selected) }}</span>
-          <span class="text-zinc-600">(step {{ selected + 1 }})</span> · click or Enter adds there · drag anywhere on the draft
+          Étape en cours : <span class="font-semibold text-amber-300">{{ label(selected) }}</span>
+          <span class="text-zinc-600">(étape {{ selected + 1 }})</span> · clic ou Entrée ajoute ici · glisse n’importe où sur la draft
         </p>
         <ChampionGrid
           class="min-h-96 flex-1"
@@ -262,7 +262,7 @@ watch(notes, (text) => {
     <textarea
       v-model="notes"
       rows="3"
-      placeholder="Notes for this draft: win condition, what to do if they take X, swaps…"
+      placeholder="Notes pour cette draft : condition de victoire, que faire s’ils prennent X, swaps…"
       class="w-full select-text resize-y rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm outline-none placeholder:text-zinc-600 focus:border-amber-400"
     />
   </div>

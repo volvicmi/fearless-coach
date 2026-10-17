@@ -20,19 +20,19 @@ async function create() {
     await navigateTo(`/series/${id}`)
   }
   catch (e: any) {
-    error.value = e?.data?.statusMessage ?? 'Could not create the series'
+    error.value = e?.data?.statusMessage ?? 'Impossible de créer la série'
   }
 }
 
 async function remove(s: Series) {
-  if (!confirm(`Delete "${s.name}" and its games?`)) return
+  if (!confirm(`Supprimer « ${s.name} » et ses games ?`)) return
   await $fetch(`/api/series/${s.id}`, { method: 'DELETE' })
   await refresh()
 }
 
 const FEARLESS_LABEL: Record<FearlessMode, string> = {
   hard: 'Fearless',
-  off: 'Normal draft',
+  off: 'Draft normale',
 }
 </script>
 
@@ -40,15 +40,15 @@ const FEARLESS_LABEL: Record<FearlessMode, string> = {
   <div class="grid gap-8 md:grid-cols-[320px_1fr]">
     <form class="flex flex-col gap-3 rounded-lg border border-zinc-800 p-4" @submit.prevent="create">
       <h2 class="font-semibold">
-        New series
+        Nouvelle série
       </h2>
       <label class="flex flex-col gap-1 text-sm">
-        Name
-        <input v-model="form.name" required placeholder="Scrim vs Team X" class="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5">
+        Nom
+        <input v-model="form.name" required placeholder="Scrim contre Équipe X" class="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5">
       </label>
       <label class="flex flex-col gap-1 text-sm">
-        Opponent
-        <input v-model="form.opponent" placeholder="Team X" class="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5">
+        Adversaire
+        <input v-model="form.opponent" placeholder="Équipe X" class="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5">
       </label>
       <div class="grid grid-cols-2 gap-3">
         <label class="flex flex-col gap-1 text-sm">
@@ -58,33 +58,33 @@ const FEARLESS_LABEL: Record<FearlessMode, string> = {
           </select>
         </label>
         <label class="flex flex-col gap-1 text-sm">
-          Game 1 side
+          Côté en game 1
           <select v-model="form.ourSide" class="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5">
-            <option value="blue">Blue</option><option value="red">Red</option>
+            <option value="blue">Bleu</option><option value="red">Rouge</option>
           </select>
         </label>
       </div>
       <label class="flex flex-col gap-1 text-sm">
-        Draft mode
+        Mode de draft
         <select v-model="form.fearless" class="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5">
           <option value="hard">Fearless</option>
-          <option value="off">Normal draft</option>
+          <option value="off">Draft normale</option>
         </select>
       </label>
       <p v-if="error" class="text-sm text-red-400">
         {{ error }}
       </p>
       <button class="rounded-md bg-amber-400 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-300">
-        Start series
+        Lancer la série
       </button>
     </form>
 
     <section class="flex flex-col gap-2">
       <h2 class="font-semibold">
-        Series
+        Séries
       </h2>
       <p v-if="!series?.length" class="text-sm text-zinc-500">
-        No series yet. Create one to start drafting.
+        Aucune série pour l’instant. Crées-en une pour commencer la draft.
       </p>
       <div
         v-for="s in series"
@@ -94,11 +94,11 @@ const FEARLESS_LABEL: Record<FearlessMode, string> = {
         <NuxtLink :to="`/series/${s.id}`" class="flex flex-1 flex-col">
           <span class="font-medium">{{ s.name }}</span>
           <span class="text-xs text-zinc-400">
-            {{ s.opponent || 'No opponent' }} · {{ s.format }} · {{ FEARLESS_LABEL[s.fearless] }} · {{ s.gameCount }} game(s)
+            {{ s.opponent || 'Pas d’adversaire' }} · {{ s.format }} · {{ FEARLESS_LABEL[s.fearless] }} · {{ s.gameCount }} game(s)
           </span>
         </NuxtLink>
         <button type="button" class="text-xs text-zinc-500 hover:text-red-400" @click="remove(s)">
-          Delete
+          Supprimer
         </button>
       </div>
     </section>

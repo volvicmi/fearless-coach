@@ -19,6 +19,6 @@ export async function getChampions(): Promise<ChampionsResponse> {
   }
   catch (err) {
     if (cache) return cache.data // serve stale data rather than break a live draft
-    throw createError({ statusCode: 502, statusMessage: 'Data Dragon unreachable', cause: err })
+    throw createError({ statusCode: 502, statusMessage: 'Data Dragon injoignable', cause: err })
   }
 }

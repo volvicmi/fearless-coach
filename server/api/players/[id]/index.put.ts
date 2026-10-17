@@ -7,15 +7,15 @@ export default defineEventHandler(async (event) => {
 
   if (body.name !== undefined) {
     const name = String(body.name).trim()
-    if (!name) throw createError({ statusCode: 400, statusMessage: 'name is required' })
+    if (!name) throw createError({ statusCode: 400, statusMessage: 'Le nom est obligatoire' })
     db.prepare('UPDATE players SET name = ? WHERE id = ?').run(name, id)
   }
   if (body.role !== undefined) {
-    if (!ROLES.includes(body.role)) throw createError({ statusCode: 400, statusMessage: 'invalid role' })
+    if (!ROLES.includes(body.role)) throw createError({ statusCode: 400, statusMessage: 'Rôle invalide' })
     db.prepare('UPDATE players SET role = ? WHERE id = ?').run(body.role, id)
   }
   if (body.status !== undefined) {
-    if (!['starter', 'sub'].includes(body.status)) throw createError({ statusCode: 400, statusMessage: 'invalid status' })
+    if (!['starter', 'sub'].includes(body.status)) throw createError({ statusCode: 400, statusMessage: 'Statut invalide' })
     db.prepare('UPDATE players SET status = ? WHERE id = ?').run(body.status, id)
   }
   if (body.riotId !== undefined) {

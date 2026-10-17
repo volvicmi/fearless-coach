@@ -12,6 +12,6 @@ export function loadCombos(): Combo[] {
 
 export async function assertChampion(id: unknown): Promise<string> {
   const { champions } = await getChampions()
-  if (typeof id !== 'string' || !champions.some(c => c.id === id)) throw createError({ statusCode: 400, statusMessage: 'unknown champion' })
+  if (typeof id !== 'string' || !champions.some(c => c.id === id)) throw createError({ statusCode: 400, statusMessage: 'Champion inconnu' })
   return id
 }

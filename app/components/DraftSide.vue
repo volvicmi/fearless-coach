@@ -22,7 +22,7 @@ const ring = computed(() => (props.side === 'blue' ? 'ring-side-blue' : 'ring-si
 <template>
   <section class="flex flex-col gap-3">
     <h3 class="text-sm font-semibold uppercase tracking-wider" :class="accent">
-      {{ side }} side <span class="text-zinc-400 normal-case">· {{ isUs ? 'Us' : 'Them' }}</span>
+      Côté {{ side === 'blue' ? 'bleu' : 'rouge' }} <span class="text-zinc-400 normal-case">· {{ isUs ? 'Nous' : 'Eux' }}</span>
     </h3>
 
     <div class="flex gap-1">

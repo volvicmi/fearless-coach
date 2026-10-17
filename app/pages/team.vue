@@ -33,21 +33,21 @@ const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID'
     <div class="flex flex-wrap items-end gap-4">
       <div>
         <h1 class="text-xl font-semibold">
-          Team
+          Équipe
         </h1>
         <p class="text-sm text-zinc-400">
-          Champion pools feed the draft suggestions and the AI coach. Drag champions between rows to rank them.
+          Les pools de champions alimentent les suggestions de draft et le coach IA. Glisse les champions d’une ligne à l’autre pour les classer.
         </p>
       </div>
       <form class="ml-auto flex gap-2" @submit.prevent="addPlayer">
-        <input v-model="form.name" placeholder="Player name" class="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm">
+        <input v-model="form.name" placeholder="Nom du joueur" class="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm">
         <select v-model="form.role" class="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm capitalize">
           <option v-for="r in ROLES" :key="r" :value="r">
             {{ r }}
           </option>
         </select>
         <button class="rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300">
-          Add player
+          Ajouter un joueur
         </button>
       </form>
     </div>
@@ -64,11 +64,11 @@ const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID'
       >
         <span class="text-[10px] font-bold text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>
         {{ p.name }}
-        <span v-if="p.status === 'sub'" class="rounded bg-zinc-800 px-1 text-[10px] uppercase text-zinc-400">sub</span>
+        <span v-if="p.status === 'sub'" class="rounded bg-zinc-800 px-1 text-[10px] uppercase text-zinc-400">remp.</span>
         <span class="text-xs text-zinc-500">{{ p.pool.filter(e => e.tier !== 'P').length }}</span>
       </button>
       <span v-if="missingRoles.length" class="self-center text-xs text-amber-300/80">
-        Missing: <span class="capitalize">{{ missingRoles.join(', ') }}</span>
+        Manquants : <span class="capitalize">{{ missingRoles.join(', ') }}</span>
       </span>
       <button
         type="button"
@@ -80,7 +80,7 @@ const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID'
       </button>
     </nav>
     <p v-else class="text-sm text-zinc-500">
-      No player yet: add your five players above.
+      Aucun joueur pour l’instant : ajoute tes cinq joueurs ci-dessus.
     </p>
 
     <CombosEditor

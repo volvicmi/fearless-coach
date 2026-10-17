@@ -6,10 +6,10 @@ export default defineEventHandler(async (event) => {
   const opponent = String(body?.opponent ?? '').trim()
   const { format, fearless, ourSide } = body ?? {}
 
-  if (!name) throw createError({ statusCode: 400, statusMessage: 'name is required' })
-  if (!(format in MAX_GAMES)) throw createError({ statusCode: 400, statusMessage: 'invalid format' })
-  if (!['hard', 'off'].includes(fearless)) throw createError({ statusCode: 400, statusMessage: 'invalid fearless mode' })
-  if (!['blue', 'red'].includes(ourSide)) throw createError({ statusCode: 400, statusMessage: 'invalid side' })
+  if (!name) throw createError({ statusCode: 400, statusMessage: 'Le nom est obligatoire' })
+  if (!(format in MAX_GAMES)) throw createError({ statusCode: 400, statusMessage: 'Format invalide' })
+  if (!['hard', 'off'].includes(fearless)) throw createError({ statusCode: 400, statusMessage: 'Mode Fearless invalide' })
+  if (!['blue', 'red'].includes(ourSide)) throw createError({ statusCode: 400, statusMessage: 'Côté invalide' })
 
   const db = useDb()
   const { lastInsertRowid } = db

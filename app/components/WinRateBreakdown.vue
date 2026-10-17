@@ -19,9 +19,9 @@ const forUs = (impact: number) => (props.ourSide === 'blue' ? impact : -impact)
 <template>
   <div class="flex flex-col gap-2 rounded-md bg-zinc-900/60 p-3">
     <div class="flex items-baseline gap-2">
-      <span class="text-sm font-semibold">Win chance</span>
+      <span class="text-sm font-semibold">Chances de victoire</span>
       <span class="ml-auto text-lg font-bold tabular-nums" :class="ours(shown) >= 50 ? 'text-emerald-400' : 'text-red-400'">
-        {{ ours(shown) }}% <span class="text-xs font-normal text-zinc-500">for us</span>
+        {{ ours(shown) }}% <span class="text-xs font-normal text-zinc-500">pour nous</span>
       </span>
     </div>
     <div class="flex h-2 overflow-hidden rounded-full">
@@ -30,10 +30,10 @@ const forUs = (impact: number) => (props.ourSide === 'blue' ? impact : -impact)
     </div>
     <p class="text-[11px] text-zinc-500">
       <template v-if="aiBlue !== undefined">
-        Data {{ ours(estimate.blue) }}% → AI {{ ours(aiBlue) }}% ({{ sign(ours(aiBlue) - ours(estimate.blue)) }} pts: synergies, matchups, scaling)
+        Données {{ ours(estimate.blue) }}% → IA {{ ours(aiBlue) }}% ({{ sign(ours(aiBlue) - ours(estimate.blue)) }} pts : synergies, matchups, scaling)
       </template>
       <template v-else>
-        Data estimate, before any AI adjustment: ask for the review to add synergies and matchups.
+        Estimation issue des données, avant tout ajustement de l’IA : demande l’analyse pour ajouter synergies et matchups.
       </template>
     </p>
     <ul class="flex flex-col gap-1">
@@ -47,7 +47,7 @@ const forUs = (impact: number) => (props.ourSide === 'blue' ? impact : -impact)
         </span>
       </li>
       <li v-if="!estimate.factors.length" class="text-xs text-zinc-500">
-        No data yet: import pro data (Pro tab) and fill your pools (Team tab).
+        Pas encore de données : importe les données pro (onglet Pro) et remplis vos pools (onglet Équipe).
       </li>
     </ul>
   </div>

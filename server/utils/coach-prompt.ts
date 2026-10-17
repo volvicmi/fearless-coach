@@ -91,7 +91,7 @@ Write every text field in correct French with all accents (é, è, à, ç…), c
 export async function loadCoachContext(gameId: number): Promise<CoachContext> {
   const db = useDb()
   const gameRow = db.prepare('SELECT * FROM games WHERE id = ?').get(gameId)
-  if (!gameRow) throw createError({ statusCode: 404, statusMessage: 'game not found' })
+  if (!gameRow) throw createError({ statusCode: 404, statusMessage: 'Game introuvable' })
   const game = toGame(gameRow)
   const series = db.prepare('SELECT format, fearless, opponent FROM series WHERE id = ?').get(game.seriesId) as { format: SeriesFormat, fearless: FearlessMode, opponent: string }
   const games = (db.prepare('SELECT * FROM games WHERE series_id = ? ORDER BY n').all(game.seriesId) as any[]).map(toGame)

@@ -39,7 +39,7 @@ export async function askGemini<S extends z.ZodType>(prompt: CoachPrompt, schema
   const chain = modelChain()
   const candidates = chain.filter(m => (exhaustedUntil.get(m) ?? 0) < now)
   if (!candidates.length) {
-    throw createError({ statusCode: 429, statusMessage: 'All free Gemini models are out of quota: retry later, or use "Copy context"' })
+    throw createError({ statusCode: 429, statusMessage: 'Quota Gemini gratuit épuisé sur tous les modèles : réessaie plus tard ou utilise « Copier le contexte »' })
   }
 
   for (const model of candidates) {
@@ -54,19 +54,19 @@ export async function askGemini<S extends z.ZodType>(prompt: CoachPrompt, schema
       }
       if (err instanceof ApiError) {
         if (err.status === 400 || err.status === 401 || err.status === 403) {
-          throw createError({ statusCode: 503, statusMessage: `Gemini refused the request (${err.status}): check GEMINI_API_KEY` })
+          throw createError({ statusCode: 503, statusMessage: `Gemini a refusé la demande (${err.status}) : vérifie GEMINI_API_KEY` })
         }
-        throw createError({ statusCode: 502, statusMessage: `Gemini API error ${err.status}: ${err.message}` })
+        throw createError({ statusCode: 502, statusMessage: `Erreur de l’API Gemini ${err.status} : ${err.message}` })
       }
       throw err
     }
 
     const parsed = schema.safeParse(safeJson(text))
-    if (!parsed.success) throw createError({ statusCode: 502, statusMessage: `${model} returned an unreadable answer, try again` })
+    if (!parsed.success) throw createError({ statusCode: 502, statusMessage: `${model} a renvoyé une réponse illisible, réessaie` })
     return { raw: parsed.data, model }
   }
 
-  throw createError({ statusCode: 429, statusMessage: 'All free Gemini models are out of quota: retry later, or use "Copy context"' })
+  throw createError({ statusCode: 429, statusMessage: 'Quota Gemini gratuit épuisé sur tous les modèles : réessaie plus tard ou utilise « Copier le contexte »' })
 }
 
 function safeJson(text: string | undefined): unknown {

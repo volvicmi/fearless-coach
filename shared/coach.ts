@@ -107,7 +107,7 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
       // Inside a tier, the leftmost champion is the player's strongest: small edge, never enough to jump a tier.
       const rankInTier = player.pool.filter(e => e.tier === entry.tier).indexOf(entry)
       let score = TIER_VALUE[entry.tier] - Math.min(rankInTier, 5) * 0.01
-      const reasons = [`${entry.tier} tier for ${player.name}${rankInTier === 0 ? ' (top of the tier)' : ''}`]
+      const reasons = [`Tier ${entry.tier} pour ${player.name}${rankInTier === 0 ? ' (en tête du tier)' : ''}`]
 
       // Ranked form: only trusted from 5 games, capped so it adjusts the tier instead of replacing it.
       const ranked = player.soloq?.champions.find(c => c.champId === entry.champId)
@@ -115,42 +115,42 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
         const wr = ranked.wins / ranked.games
         score += Math.max(-0.1, Math.min(0.1, (wr - 0.5) * 0.5))
         if (ranked.recent >= 5) score += 0.05
-        reasons.push(`Ranked: ${ranked.games} games, ${Math.round(wr * 100)}% WR${ranked.recent ? `, ${ranked.recent} in 30 days` : ''}`)
+        reasons.push(`Ranked : ${ranked.games} games, ${Math.round(wr * 100)}% WR${ranked.recent ? `, ${ranked.recent} sur 30 jours` : ''}`)
       }
 
       // Pro meta: presence in LCK/LEC, a nudge rather than a rule.
       const pro = proById.get(entry.champId)
       if (pro && pro.presence >= 0.2) {
         score += Math.min(pro.presence, 0.9) * 0.1
-        reasons.push(`Pro: ${Math.round(pro.presence * 100)}% presence${pro.picks ? `, ${Math.round(pro.winRate * 100)}% WR` : ''}`)
+        reasons.push(`Pro : ${Math.round(pro.presence * 100)}% de présence${pro.picks ? `, ${Math.round(pro.winRate * 100)}% WR` : ''}`)
       }
 
       // Practised combo with one of our picks (bot lane duo, jungle-mid…): strong signal.
       const comboWith = comboPartners(ctx.combos, entry.champId).filter(c => ourPicks.includes(c))
       if (comboWith.length) {
         score += 0.15
-        reasons.push(`Combo with ${comboWith.map(c => byId.get(c)?.name ?? c).join(', ')}`)
+        reasons.push(`Combo avec ${comboWith.map(c => byId.get(c)?.name ?? c).join(', ')}`)
       }
 
       const flexRoles = rolesOf.get(entry.champId)
       if (earlyPick && flexRoles && flexRoles.size > 1) {
         score += 0.15
-        reasons.push(`Flex (${[...flexRoles].join('/')}): hides the role`)
+        reasons.push(`Flex (${[...flexRoles].join('/')}) : cache le rôle`)
       }
 
       // Fearless economy: spending one of the last strong picks of a thin pool hurts later games.
       if (fearlessOn && (entry.tier === 'S' || entry.tier === 'A') && strongLeft <= gamesLeftAfterThis + 1) {
         score -= 0.2
-        reasons.push(`Only ${strongLeft} S/A left for ${player.name} with ${gamesLeftAfterThis} game(s) to go`)
+        reasons.push(`Plus que ${strongLeft} S/A pour ${player.name} avec encore ${gamesLeftAfterThis} game(s) à jouer`)
       }
 
       if (ourPicks.length >= 2 && ourMages === 0 && isMage(champ)) {
         score += 0.1
-        reasons.push('Adds magic damage')
+        reasons.push('Apporte des dégâts magiques')
       }
       if (ourPicks.length >= 2 && ourMarksmen === 0 && isMarksman(champ)) {
         score += 0.1
-        reasons.push('Adds sustained physical damage')
+        reasons.push('Apporte des dégâts physiques soutenus')
       }
 
       const prev = best.get(entry.champId)
@@ -163,8 +163,8 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
   return [...best.values()].sort((a, b) => b.score - a.score).slice(0, limit)
 }
 
-/** Human-readable label of a step from our point of view, e.g. "Our pick 2". */
+/** Libellé lisible d’une étape de notre point de vue, ex. « Notre pick 2 ». */
 export function stepLabel(step: DraftStep, ourSide: GameDraft['ourSide']): string {
-  const who = step.side === ourSide ? 'Our' : 'Their'
+  const who = step.side === ourSide ? 'Notre' : 'Leur'
   return `${who} ${step.type} ${step.slot + 1}`
 }

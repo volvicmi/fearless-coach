@@ -49,8 +49,8 @@ export function estimateWinRate(ctx: CoachContext): WinRateEstimate {
     const blue = avg('blue')
     const red = avg('red')
     factors.push({
-      label: 'Pro strength of the picks',
-      detail: `Average pro win rate (LCK/LEC, small samples pulled toward 50%): blue ${pct(blue)}, red ${pct(red)}`,
+      label: 'Force pro des picks',
+      detail: `WR pro moyen (LCK/LEC, petits échantillons ramenés vers 50 %) : bleu ${pct(blue)}, rouge ${pct(red)}`,
       impact: round1((blue - red) * 100),
     })
   }
@@ -68,7 +68,7 @@ export function estimateWinRate(ctx: CoachContext): WinRateEstimate {
       const entry = player?.pool.find(e => e.champId === champ)
       if (!player || !entry) {
         points += OFF_POOL_POINTS
-        notes.push(`${nameOf(champ)} off-pool`)
+        notes.push(`${nameOf(champ)} hors pool`)
         continue
       }
       points += TIER_POINTS[entry.tier]
@@ -76,14 +76,14 @@ export function estimateWinRate(ctx: CoachContext): WinRateEstimate {
       if (ranked && ranked.games >= 3) {
         const wr = shrink(ranked.wins, ranked.games, RANKED_PRIOR_GAMES)
         points += (wr - 0.5) * 20 // 60% shrunk WR → +2 points
-        notes.push(`${nameOf(champ)} ${entry.tier}, ${ranked.games} ranked games at ${pct(ranked.wins / ranked.games)}`)
+        notes.push(`${nameOf(champ)} ${entry.tier}, ${ranked.games} games ranked à ${pct(ranked.wins / ranked.games)}`)
       }
       else {
         notes.push(`${nameOf(champ)} ${entry.tier}`)
       }
     }
     factors.push({
-      label: 'Our players\' comfort',
+      label: 'Confort de nos joueurs',
       detail: notes.join(' · '),
       impact: round1((points / Math.max(1, picks[us].length)) * 2 * sign(us)),
     })
@@ -97,8 +97,8 @@ export function estimateWinRate(ctx: CoachContext): WinRateEstimate {
     const physical = champs.filter(c => c.tags.includes('Marksman') || (c.tags.includes('Fighter') && !c.tags.includes('Mage'))).length
     if (!magic || !physical) {
       factors.push({
-        label: `Damage mix (${side})`,
-        detail: `${side} has ${!magic ? 'no mage / magic damage' : 'no physical carry'}: easy to itemise against`,
+        label: `Mix de dégâts (${side === 'blue' ? 'bleu' : 'rouge'})`,
+        detail: `${side === 'blue' ? 'Bleu' : 'Rouge'} n’a ${!magic ? 'ni mage ni dégâts magiques' : 'aucun carry physique'} : facile à contrer en items`,
         impact: -3 * sign(side),
       })
     }

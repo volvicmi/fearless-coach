@@ -48,7 +48,7 @@ async function ask() {
     }
   }
   catch (e: any) {
-    error.value = e?.data?.statusMessage ?? 'The AI coach is unavailable'
+    error.value = e?.data?.statusMessage ?? 'Le coach IA est indisponible'
   }
   finally {
     loading.value = false
@@ -77,7 +77,7 @@ async function copyContext() {
     setTimeout(() => (copied.value = false), 2000)
   }
   catch (e: any) {
-    error.value = e?.data?.statusMessage ?? 'Could not copy the context'
+    error.value = e?.data?.statusMessage ?? 'Impossible de copier le contexte'
   }
 }
 
@@ -87,16 +87,17 @@ function play(champId: string) {
 }
 
 const ASK_LABEL: Record<CoachMode, string> = {
-  advice: 'Ask the coach',
-  prediction: 'Predict their move',
-  review: 'Review the draft',
+  advice: 'Demander au coach',
+  prediction: 'Prédire leur choix',
+  review: 'Analyser la draft',
 }
 const IDLE_HINT: Record<CoachMode, string> = {
-  advice: 'The coach reads the draft, your pools and the Fearless locks, then suggests up to 3 options.',
-  prediction: 'Their turn: the coach predicts their 3 most likely choices and how to answer.',
-  review: 'Draft complete: get both comps\' estimated win rate, game plans and how to counter them.',
+  advice: 'Le coach lit la draft, vos pools et les verrous Fearless, puis propose jusqu’à 3 options.',
+  prediction: 'Leur tour : le coach prédit leurs 3 choix les plus probables et comment y répondre.',
+  review: 'Draft terminée : obtiens le winrate estimé des deux compos, leurs plans de jeu et comment les contrer.',
 }
 const CONFIDENCE: Record<string, string> = { high: 'text-emerald-400', medium: 'text-amber-300', low: 'text-zinc-400' }
+const CONFIDENCE_LABEL: Record<string, string> = { high: 'confiance élevée', medium: 'confiance moyenne', low: 'confiance faible' }
 
 const us = computed(() => props.ctx.game.ourSide)
 /** Data-based win chance, computed locally as soon as the draft is complete. */
@@ -110,19 +111,19 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
     <div v-if="mode !== 'review'" class="flex flex-col gap-2">
       <h3 class="text-sm font-semibold">
         Suggestions
-        <span class="font-normal text-zinc-500">· from your pools</span>
+        <span class="font-normal text-zinc-500">· d’après vos pools</span>
       </h3>
       <p v-if="!ourTurn" class="text-xs text-zinc-500">
-        Waiting for their {{ step?.type }}…
+        En attente de leur {{ step?.type }}…
       </p>
       <p v-else-if="step?.type === 'ban'" class="text-xs text-zinc-500">
-        Ban phase: ask the AI coach for ban targets.
+        Phase de bans : demande au coach IA quoi bannir.
       </p>
       <p v-else-if="!ctx.team.length" class="text-xs text-zinc-500">
-        Add your players and pools in the <NuxtLink to="/team" class="text-amber-300 underline">Team</NuxtLink> tab to get suggestions.
+        Ajoute tes joueurs et leurs pools dans l’onglet <NuxtLink to="/team" class="text-amber-300 underline">Équipe</NuxtLink> pour obtenir des suggestions.
       </p>
       <p v-else-if="!suggestions.length" class="text-xs text-zinc-500">
-        Nothing left in the pools for the open roles.
+        Plus rien dans les pools pour les rôles restants.
       </p>
       <ul v-else class="flex flex-col gap-1">
         <li v-for="s in suggestions" :key="s.champId">
@@ -147,19 +148,19 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
     <div class="flex flex-col gap-2" :class="mode === 'review' && 'lg:col-span-2 xl:col-span-1'">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h3 class="text-sm font-semibold">
-          AI coach
+          Coach IA
         </h3>
-        <label class="flex items-center gap-1.5 text-xs text-zinc-400" title="Asks automatically on our turns and for the final review">
+        <label class="flex items-center gap-1.5 text-xs text-zinc-400" title="Demande automatiquement à nos tours et pour l’analyse finale">
           <input v-model="auto" type="checkbox" class="accent-amber-400">
           Auto
         </label>
         <button
           type="button"
           class="ml-auto rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
-          title="Copy the draft context to paste into any AI chat (free)"
+          title="Copie le contexte de la draft pour le coller dans n’importe quel chat IA (gratuit)"
           @click="copyContext"
         >
-          {{ copied ? 'Copied ✓' : 'Copy context' }}
+          {{ copied ? 'Copié ✓' : 'Copier le contexte' }}
         </button>
         <button
           type="button"
@@ -167,7 +168,7 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
           :disabled="loading"
           @click="ask"
         >
-          {{ loading ? 'Thinking…' : ASK_LABEL[mode] }}
+          {{ loading ? 'Réflexion…' : ASK_LABEL[mode] }}
         </button>
       </div>
 
@@ -181,9 +182,9 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
       <!-- Our turn: advice / their turn: prediction -->
       <div v-if="advice" class="flex flex-col gap-2" :class="!fresh && 'opacity-40'">
         <p class="text-xs text-zinc-500">
-          <span v-if="advice.kind === 'prediction'" class="font-semibold text-side-red">Prediction · </span>
+          <span v-if="advice.kind === 'prediction'" class="font-semibold text-side-red">Prédiction · </span>
           {{ advice.step }} · {{ advice.model }} · {{ (advice.ms / 1000).toFixed(1) }}s
-          <span v-if="!fresh" class="text-amber-300"> · outdated, the draft moved on</span>
+          <span v-if="!fresh" class="text-amber-300"> · obsolète, la draft a avancé</span>
         </p>
         <button
           v-for="r in advice.recommendations"
@@ -191,7 +192,7 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
           type="button"
           class="flex items-start gap-2 rounded-md p-1.5 text-left hover:bg-zinc-800 disabled:cursor-default disabled:hover:bg-transparent"
           :disabled="!fresh"
-          :title="advice.kind === 'prediction' ? 'Click if they take it' : 'Click to play it'"
+          :title="advice.kind === 'prediction' ? 'Clique s’ils le prennent' : 'Clique pour le jouer'"
           @click="play(r.champId)"
         >
           <img :src="iconUrl(r.champId)" :alt="nameOf(r.champId)" class="size-10 rounded">
@@ -199,16 +200,16 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
             <span class="text-sm font-medium">
               {{ nameOf(r.champId) }}
               <span v-if="r.player" class="text-xs font-normal text-zinc-400">· {{ r.player }}</span>
-              <span class="text-xs font-normal" :class="CONFIDENCE[r.confidence]">· {{ r.confidence }}</span>
+              <span class="text-xs font-normal" :class="CONFIDENCE[r.confidence]">· {{ CONFIDENCE_LABEL[r.confidence] ?? r.confidence }}</span>
             </span>
             <span class="text-xs text-zinc-300">{{ r.reason }}</span>
           </span>
         </button>
         <p v-if="advice.enemyRead" class="text-xs">
-          <span class="font-semibold text-side-red">Them:</span> {{ advice.enemyRead }}
+          <span class="font-semibold text-side-red">Eux :</span> {{ advice.enemyRead }}
         </p>
         <p v-if="advice.plan" class="text-xs">
-          <span class="font-semibold text-emerald-400">{{ advice.kind === 'prediction' ? 'Our answer:' : 'Plan:' }}</span> {{ advice.plan }}
+          <span class="font-semibold text-emerald-400">{{ advice.kind === 'prediction' ? 'Notre réponse :' : 'Plan :' }}</span> {{ advice.plan }}
         </p>
         <p v-for="w in advice.warnings" :key="w" class="text-xs text-amber-300">
           ⚠ {{ w }}
@@ -224,10 +225,10 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
       />
       <div v-if="review" class="flex flex-col gap-3" :class="!fresh && 'opacity-40'">
         <p class="text-[11px] text-zinc-500">
-          AI review · {{ review.model }} · {{ (review.ms / 1000).toFixed(1) }}s
+          Analyse IA · {{ review.model }} · {{ (review.ms / 1000).toFixed(1) }}s
         </p>
         <p class="text-xs">
-          <span class="font-semibold text-emerald-400">Verdict:</span> {{ review.verdict }}
+          <span class="font-semibold text-emerald-400">Verdict :</span> {{ review.verdict }}
         </p>
         <div class="grid gap-3 lg:grid-cols-2 xl:grid-cols-1">
           <CompReviewCard

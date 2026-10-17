@@ -2,7 +2,6 @@
  * Weekly availability: each player has habits (usual days + time) and per-date exceptions.
  * Weeks start on Monday; dates are local "YYYY-MM-DD" strings.
  */
-export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 export const WEEKDAYS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as const
 
 export interface DayAvailability {

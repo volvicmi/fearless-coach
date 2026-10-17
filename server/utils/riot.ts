@@ -29,7 +29,7 @@ async function waitForSlot() {
 
 function apiKey(): string {
   const key = process.env.RIOT_API_KEY
-  if (!key) throw createError({ statusCode: 503, statusMessage: 'RIOT_API_KEY is missing: add it to .env and restart the server' })
+  if (!key) throw createError({ statusCode: 503, statusMessage: 'RIOT_API_KEY manquante : ajoute-la dans .env et redémarre le serveur' })
   return key
 }
 
@@ -52,10 +52,10 @@ export function riotGet<T>(host: string, path: string, query?: Record<string, st
           continue
         }
         if (status === 401 || status === 403) {
-          throw createError({ statusCode: 503, statusMessage: 'Riot API key refused: development keys expire every 24 h, generate a new one at developer.riotgames.com' })
+          throw createError({ statusCode: 503, statusMessage: 'Clé API Riot refusée : les clés de développement expirent toutes les 24 h, génères-en une nouvelle sur developer.riotgames.com' })
         }
-        if (status === 404) throw createError({ statusCode: 404, statusMessage: 'Not found on the Riot API' })
-        throw createError({ statusCode: 502, statusMessage: `Riot API error ${status || ''}`.trim() })
+        if (status === 404) throw createError({ statusCode: 404, statusMessage: 'Introuvable sur l’API Riot' })
+        throw createError({ statusCode: 502, statusMessage: `Erreur de l’API Riot ${status || ''}`.trim() })
       }
     }
   }

@@ -18,7 +18,7 @@ async function newDraft(p: Prep) {
 }
 
 async function remove(p: Prep) {
-  if (!confirm(`Delete "${p.name}" and its ${p.scenarioCount} draft(s)?`)) return
+  if (!confirm(`Supprimer « ${p.name} » et ses ${p.scenarioCount} draft(s) ?`)) return
   await $fetch(`/api/preps/${p.id}`, { method: 'DELETE' })
   await refresh()
 }
@@ -33,10 +33,10 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
     <div class="flex flex-wrap items-end gap-4">
       <div>
         <h1 class="text-xl font-semibold">
-          Draft prep
+          Prep de draft
         </h1>
         <p class="text-sm text-zinc-400">
-          Cook drafts in advance: one prep per opponent or theme, several drafts inside, several options per step.
+          Prépare tes drafts à l’avance : une prep par adversaire ou par thème, plusieurs drafts dedans, plusieurs options par étape.
         </p>
       </div>
       <button
@@ -44,19 +44,19 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
         class="ml-auto cursor-pointer rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300"
         @click="create"
       >
-        + New prep
+        + Nouvelle prep
       </button>
     </div>
 
     <div v-if="!preps?.length" class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-800 py-16 text-center">
       <p class="text-zinc-300">
-        No prep yet
+        Aucune prep pour l’instant
       </p>
       <p class="max-w-md text-sm text-zinc-500">
-        Create a prep for your next opponent, then cook a few drafts: engage, poke, front to back… with backup picks on every step.
+        Crée une prep pour ton prochain adversaire, puis prépare quelques drafts : engage, poke, front to back… avec des picks de secours à chaque étape.
       </p>
       <button type="button" class="cursor-pointer rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300" @click="create">
-        + New prep
+        + Nouvelle prep
       </button>
     </div>
 
@@ -69,10 +69,10 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
         <header class="flex items-start gap-3">
           <NuxtLink :to="`/prep/${p.id}`" class="flex flex-1 flex-col hover:text-amber-300">
             <span class="text-lg font-semibold">{{ p.name }}</span>
-            <span class="text-xs text-zinc-400">{{ p.opponent ? `vs ${p.opponent}` : 'No opponent' }} · {{ p.scenarioCount }} draft(s)</span>
+            <span class="text-xs text-zinc-400">{{ p.opponent ? `vs ${p.opponent}` : 'Pas d’adversaire' }} · {{ p.scenarioCount }} draft(s)</span>
           </NuxtLink>
           <button type="button" class="cursor-pointer text-xs text-zinc-600 hover:text-red-400" @click="remove(p)">
-            Delete
+            Supprimer
           </button>
         </header>
 
@@ -95,7 +95,7 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
               <span
                 class="ml-auto rounded px-1.5 text-[10px] font-bold uppercase"
                 :class="s.ourSide === 'blue' ? 'bg-side-blue/20 text-side-blue' : 'bg-side-red/20 text-side-red'"
-              >{{ s.ourSide }}</span>
+              >{{ s.ourSide === 'blue' ? 'bleu' : 'rouge' }}</span>
             </NuxtLink>
           </li>
         </ul>
@@ -105,7 +105,7 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
           class="cursor-pointer self-start rounded-md border border-dashed border-zinc-700 px-3 py-1 text-xs text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
           @click="newDraft(p)"
         >
-          + New draft
+          + Nouvelle draft
         </button>
       </article>
     </div>

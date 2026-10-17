@@ -8,13 +8,13 @@ export default defineEventHandler(async (event) => {
   const playerId = Number(getRouterParam(event, 'id'))
   const champId = getRouterParam(event, 'champ')!
   const body = await readBody(event) ?? {}
-  if (!TIERS.includes(body.tier)) throw createError({ statusCode: 400, statusMessage: 'invalid tier' })
+  if (!TIERS.includes(body.tier)) throw createError({ statusCode: 400, statusMessage: 'Tier invalide' })
   if (body.index !== undefined && !(Number.isInteger(body.index) && body.index >= 0)) {
-    throw createError({ statusCode: 400, statusMessage: 'invalid index' })
+    throw createError({ statusCode: 400, statusMessage: 'Position invalide' })
   }
 
   const { champions } = await getChampions()
-  if (!champions.some(c => c.id === champId)) throw createError({ statusCode: 400, statusMessage: 'unknown champion' })
+  if (!champions.some(c => c.id === champId)) throw createError({ statusCode: 400, statusMessage: 'Champion inconnu' })
 
   const db = useDb()
   db.exec('BEGIN')

@@ -16,12 +16,12 @@ const showAll = ref(false)
 
 type SortKey = 'name' | 'presence' | 'picks' | 'bans' | 'winRate' | 'avgRound' | 'blindPct'
 const COLUMNS: { key: SortKey, label: string, title?: string }[] = [
-  { key: 'presence', label: 'Presence' },
+  { key: 'presence', label: 'Présence' },
   { key: 'picks', label: 'Picks' },
   { key: 'bans', label: 'Bans' },
-  { key: 'winRate', label: 'WR', title: 'Win rate when picked (champions with fewer than 3 picks go last)' },
-  { key: 'avgRound', label: 'Round', title: 'Average pick round' },
-  { key: 'blindPct', label: 'Blind', title: 'Blind pick %' },
+  { key: 'winRate', label: 'WR', title: 'Taux de victoire quand il est pické (les champions avec moins de 3 picks passent en dernier)' },
+  { key: 'avgRound', label: 'Tour', title: 'Tour de pick moyen' },
+  { key: 'blindPct', label: 'Blind', title: '% de blind pick' },
 ]
 const sort = ref<{ key: SortKey, desc: boolean }>({ key: 'presence', desc: true })
 function sortBy(key: SortKey) {
@@ -77,7 +77,7 @@ async function add() {
 }
 
 async function remove(name: string) {
-  if (!confirm(`Remove "${name}" and its imported data?`)) return
+  if (!confirm(`Retirer « ${name} » et ses données importées ?`)) return
   await $fetch(`/api/pro/tournaments/${encodeURIComponent(name)}`, { method: 'DELETE' })
   await refresh()
 }
@@ -90,10 +90,10 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
   <div class="flex flex-col gap-6">
     <div>
       <h1 class="text-xl font-semibold">
-        Pro meta
+        Méta pro
       </h1>
       <p class="text-sm text-zinc-400">
-        Champion stats and real drafts from gol.gg. The AI coach uses them on every request, the suggestions give a small edge to present champions.
+        Stats des champions et vraies drafts issues de gol.gg. Le coach IA les utilise à chaque demande, les suggestions donnent un léger avantage aux champions présents.
       </p>
     </div>
 
@@ -113,14 +113,14 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
           type="button"
           class="cursor-pointer rounded-full border px-2 py-0.5 text-[11px]"
           :class="data?.current === t.name ? 'border-amber-400 bg-amber-400/15 text-amber-300' : 'border-zinc-800 text-zinc-500 hover:text-zinc-200'"
-          :title="data?.current === t.name ? 'Click to unset' : 'The tournament we are playing now'"
+          :title="data?.current === t.name ? 'Cliquer pour retirer' : 'Le tournoi que nous jouons en ce moment'"
           @click="setCurrent(t.name)"
         >
-          {{ data?.current === t.name ? '★ Current tournament' : 'Set as current' }}
+          {{ data?.current === t.name ? '★ Tournoi en cours' : 'Définir comme tournoi en cours' }}
         </button>
         <span class="text-xs text-zinc-500">
-          {{ t.series }} series · {{ t.games }} drafts
-          <template v-if="t.syncedAt"> · synced {{ t.syncedAt.slice(0, 16) }}</template>
+          {{ t.series }} séries · {{ t.games }} drafts
+          <template v-if="t.syncedAt"> · synchronisé le {{ t.syncedAt.slice(0, 16) }}</template>
         </span>
         <span v-if="statuses[t.name]" class="text-xs" :class="statuses[t.name]!.state === 'error' ? 'text-red-400' : 'text-amber-300'">
           {{ statuses[t.name]!.state === 'running' && statuses[t.name]!.total ? `${statuses[t.name]!.done}/${statuses[t.name]!.total} · ` : '' }}{{ statuses[t.name]!.message }}
@@ -131,31 +131,31 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
           :disabled="statuses[t.name]?.state === 'running'"
           @click="sync(t.name)"
         >
-          {{ t.syncedAt ? 'Update' : 'Import' }}
+          {{ t.syncedAt ? 'Mettre à jour' : 'Importer' }}
         </button>
         <button type="button" class="cursor-pointer text-xs text-zinc-500 hover:text-red-400" @click="remove(t.name)">
-          Remove
+          Retirer
         </button>
       </div>
 
       <form class="flex gap-2" @submit.prevent="add">
         <input
           v-model="newName"
-          placeholder="gol.gg tournament name, e.g. LCK 2026 Rounds 1-2"
+          placeholder="Nom du tournoi sur gol.gg, ex. LCK 2026 Rounds 1-2"
           class="w-96 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm"
         >
         <button class="cursor-pointer rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300">
-          Add tournament
+          Ajouter un tournoi
         </button>
       </form>
       <p class="text-xs text-zinc-500">
-        Use the exact name shown in the gol.gg URL (…/tournament-stats/<b>LCK Cup 2026</b>/). Imports read one page per second.
+        Utilise le nom exact affiché dans l’URL gol.gg (…/tournament-stats/<b>LCK Cup 2026</b>/). Les imports lisent une page par seconde.
       </p>
     </section>
 
     <section v-if="data?.meta.games" class="flex flex-col gap-2">
       <h2 class="font-semibold">
-        Champions <span class="text-sm font-normal text-zinc-500">· {{ data.meta.games }} pro games</span>
+        Champions <span class="text-sm font-normal text-zinc-500">· {{ data.meta.games }} games pro</span>
       </h2>
       <table class="w-full text-sm">
         <thead class="text-left text-xs uppercase text-zinc-500">
@@ -170,7 +170,7 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
                 type="button"
                 class="cursor-pointer uppercase hover:text-zinc-200"
                 :class="sort.key === col.key && 'text-amber-300'"
-                :title="col.title ?? `Sort by ${col.label}`"
+                :title="col.title ?? `Trier par ${col.label}`"
                 @click="sortBy(col.key)"
               >
                 {{ col.label }}{{ arrow(col.key) }}
@@ -218,7 +218,7 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
         class="cursor-pointer self-start text-xs text-zinc-500 hover:text-zinc-200"
         @click="showAll = !showAll"
       >
-        {{ showAll ? 'Show less' : `Show all ${data.meta.champions.length} champions` }}
+        {{ showAll ? 'Afficher moins' : `Afficher les ${data.meta.champions.length} champions` }}
       </button>
     </section>
   </div>

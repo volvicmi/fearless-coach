@@ -5,7 +5,7 @@ const route = useRoute()
 const id = route.params.id as string
 
 const { data, refresh } = await useFetch<PrepDetail>(`/api/preps/${id}`)
-if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Prep not found', fatal: true })
+if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Prep introuvable', fatal: true })
 const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (c: string) => byId.value.get(c)?.name ?? c
 
@@ -32,7 +32,7 @@ async function addScenario(copyFrom?: number) {
 }
 
 async function removeScenario(s: PrepScenario) {
-  if (!confirm(`Delete "${s.name}"?`)) return
+  if (!confirm(`Supprimer « ${s.name} » ?`)) return
   await $fetch(`/api/scenarios/${s.id}`, { method: 'DELETE' })
   await refresh()
   selectedId.value = data.value?.scenarios[0]?.id
@@ -57,7 +57,7 @@ async function updatePrep(body: { name?: string, opponent?: string }) {
       >
       <input
         :value="data.prep.opponent"
-        placeholder="Opponent"
+        placeholder="Adversaire"
         class="w-48 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm"
         @change="updatePrep({ opponent: ($event.target as HTMLInputElement).value })"
       >
@@ -81,7 +81,7 @@ async function updatePrep(body: { name?: string, opponent?: string }) {
           class="w-60 shrink-0 cursor-pointer rounded-lg border border-dashed border-zinc-700 p-3 text-sm text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 2xl:w-auto"
           @click="addScenario()"
         >
-          + New draft
+          + Nouvelle draft
         </button>
       </nav>
 

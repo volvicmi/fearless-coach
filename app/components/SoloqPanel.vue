@@ -15,7 +15,7 @@ const syncing = computed(() => status.value?.state === 'running')
 
 const soloq = computed(() => props.player.soloq)
 const queue = ref<'all' | 'solo' | 'flex'>('all')
-const QUEUE_LABEL = { all: 'All', solo: 'SoloQ', flex: 'Flex' } as const
+const QUEUE_LABEL = { all: 'Tout', solo: 'SoloQ', flex: 'Flex' } as const
 const statsOf = (q: 'all' | 'solo' | 'flex') => (soloq.value ? (q === 'all' ? soloq.value : soloq.value[q]) : null)
 /** Stats of the selected queue */
 const stats = computed(() => statsOf(queue.value))
@@ -36,7 +36,7 @@ async function sync() {
     status.value = await $fetch<SyncStatus>(`/api/players/${props.player.id}/sync`, { method: 'POST' })
   }
   catch (e: any) {
-    error.value = e?.data?.statusMessage ?? 'Sync failed'
+    error.value = e?.data?.statusMessage ?? 'Échec de la synchronisation'
     return
   }
   clearInterval(timer)
@@ -44,7 +44,7 @@ async function sync() {
     status.value = await $fetch<SyncStatus>(`/api/players/${props.player.id}/sync`)
     if (status.value.state !== 'running') {
       clearInterval(timer)
-      if (status.value.state === 'error') error.value = status.value.message ?? 'Sync failed'
+      if (status.value.state === 'error') error.value = status.value.message ?? 'Échec de la synchronisation'
       emit('changed')
     }
   }, 1000)
@@ -63,16 +63,16 @@ async function addToPool(champId: string) {
         Ranked
       </h4>
       <span v-if="soloq?.syncedAt" class="text-xs text-zinc-500">
-        synced {{ soloq.syncedAt.slice(0, 16).replace('T', ' ') }}
+        synchronisé le {{ soloq.syncedAt.slice(0, 16).replace('T', ' ') }}
       </span>
       <button
         type="button"
         class="ml-auto rounded-md border border-zinc-700 px-2 py-0.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
         :disabled="syncing || !player.riotId.includes('#')"
-        :title="player.riotId.includes('#') ? 'Import ranked games from the Riot API' : 'Set the Riot ID (Name#TAG) first'"
+        :title="player.riotId.includes('#') ? 'Importer les parties classées depuis l’API Riot' : 'Renseigne d’abord le Riot ID (Nom#TAG)'"
         @click="sync"
       >
-        {{ syncing ? (status!.total ? `${status!.done}/${status!.total}` : 'Syncing…') : 'Sync' }}
+        {{ syncing ? (status!.total ? `${status!.done}/${status!.total}` : 'Synchronisation…') : 'Synchroniser' }}
       </button>
     </div>
 
@@ -100,7 +100,7 @@ async function addToPool(champId: string) {
       {{ status?.message }}
     </p>
     <p v-else-if="!soloq?.games" class="text-xs text-zinc-600">
-      {{ player.riotId.includes('#') ? 'No ranked games imported yet: click Sync.' : 'Add the Riot ID (Name#TAG) to import ranked games.' }}
+      {{ player.riotId.includes('#') ? 'Aucune partie classée importée pour l’instant : clique sur Synchroniser.' : 'Ajoute le Riot ID (Nom#TAG) pour importer les parties classées.' }}
     </p>
 
     <table v-if="champs.length" class="w-full text-xs">
@@ -118,8 +118,8 @@ async function addToPool(champId: string) {
           <th class="pb-1 text-right font-medium">
             KDA
           </th>
-          <th class="pb-1 text-right font-medium" title="Games in the last 30 days">
-            30d
+          <th class="pb-1 text-right font-medium" title="Games sur les 30 derniers jours">
+            30 j
           </th>
           <th class="pb-1 text-right font-medium">
             Pool
@@ -133,7 +133,7 @@ async function addToPool(champId: string) {
               :data-drag-champ="c.champId"
               :data-drag-from="poolTier.get(c.champId)"
               class="flex cursor-grab touch-none items-center gap-1.5"
-              title="Drag onto a tier row"
+              title="Glisse sur une ligne de tier"
             >
               <img :src="iconUrl(c.champId)" :alt="nameOf(c.champId)" draggable="false" class="size-5 select-none rounded">
               {{ nameOf(c.champId) }}
@@ -158,7 +158,7 @@ async function addToPool(champId: string) {
               v-else
               type="button"
               class="rounded px-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-              :title="`Add ${nameOf(c.champId)} to the pool as B tier`"
+              :title="`Ajouter ${nameOf(c.champId)} au pool en tier B`"
               @click="addToPool(c.champId)"
             >
               +
@@ -173,7 +173,7 @@ async function addToPool(champId: string) {
       class="self-start text-xs text-zinc-500 hover:text-zinc-200"
       @click="showAll = !showAll"
     >
-      {{ showAll ? 'Show less' : `Show all ${stats!.champions.length} champions` }}
+      {{ showAll ? 'Afficher moins' : `Afficher les ${stats!.champions.length} champions` }}
     </button>
   </section>
 </template>

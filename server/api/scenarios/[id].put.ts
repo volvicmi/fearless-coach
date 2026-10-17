@@ -8,18 +8,18 @@ export default defineEventHandler(async (event) => {
 
   if (body.name !== undefined) {
     const name = String(body.name).trim()
-    if (!name) throw createError({ statusCode: 400, statusMessage: 'name is required' })
+    if (!name) throw createError({ statusCode: 400, statusMessage: 'Le nom est obligatoire' })
     db.prepare('UPDATE prep_scenarios SET name = ? WHERE id = ?').run(name, id)
   }
   if (body.color !== undefined) db.prepare('UPDATE prep_scenarios SET color = ? WHERE id = ?').run(validateColor(body.color), id)
   if (body.ourSide !== undefined) {
-    if (!['blue', 'red'].includes(body.ourSide)) throw createError({ statusCode: 400, statusMessage: 'invalid side' })
+    if (!['blue', 'red'].includes(body.ourSide)) throw createError({ statusCode: 400, statusMessage: 'Côté invalide' })
     db.prepare('UPDATE prep_scenarios SET our_side = ? WHERE id = ?').run(body.ourSide, id)
   }
   if (body.slots !== undefined) db.prepare('UPDATE prep_scenarios SET slots = ? WHERE id = ?').run(JSON.stringify(await validateSlots(body.slots)), id)
   if (body.notes !== undefined) db.prepare('UPDATE prep_scenarios SET notes = ? WHERE id = ?').run(String(body.notes).slice(0, 5000), id)
 
   const row = db.prepare('SELECT * FROM prep_scenarios WHERE id = ?').get(id)
-  if (!row) throw createError({ statusCode: 404, statusMessage: 'scenario not found' })
+  if (!row) throw createError({ statusCode: 404, statusMessage: 'Draft de prep introuvable' })
   return toScenario(row)
 })

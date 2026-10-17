@@ -35,7 +35,7 @@ const filled = computed(() => [...bans.value, ...picks.value].filter(s => s.leng
       <span
         class="ml-auto rounded px-1.5 text-[10px] font-bold uppercase"
         :class="scenario.ourSide === 'blue' ? 'bg-side-blue/20 text-side-blue' : 'bg-side-red/20 text-side-red'"
-      >{{ scenario.ourSide }}</span>
+      >{{ scenario.ourSide === 'blue' ? 'bleu' : 'rouge' }}</span>
     </div>
     <!-- Our draft only: 5 bans, then 5 picks (main choice, +n backups) -->
     <div class="flex gap-0.5">
@@ -62,7 +62,7 @@ const filled = computed(() => [...bans.value, ...picks.value].filter(s => s.leng
     </div>
     <div class="flex items-center gap-2 text-[10px] text-zinc-500">
       <span :class="style.text">{{ style.label }}</span>
-      <span>· {{ filled }}/10 steps</span>
+      <span>· {{ filled }}/10 étapes</span>
       <span v-if="scenario.notes" class="truncate">· {{ scenario.notes.split('\n')[0] }}</span>
     </div>
   </div>

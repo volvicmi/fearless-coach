@@ -35,11 +35,11 @@ export function syncStatus(playerId: number): SyncStatus {
 export function startSync(playerId: number): SyncStatus {
   const current = jobs.get(playerId)
   if (current?.state === 'running') return current
-  const status: SyncStatus = { state: 'running', done: 0, total: 0, message: 'Looking up the Riot account…' }
+  const status: SyncStatus = { state: 'running', done: 0, total: 0, message: 'Recherche du compte Riot…' }
   jobs.set(playerId, status)
   runSync(playerId, status).catch((err) => {
     status.state = 'error'
-    status.message = err?.statusMessage ?? err?.message ?? 'Sync failed'
+    status.message = err?.statusMessage ?? err?.message ?? 'Échec de la synchronisation'
   })
   return status
 }
@@ -47,16 +47,16 @@ export function startSync(playerId: number): SyncStatus {
 async function runSync(playerId: number, status: SyncStatus) {
   const db = useDb()
   const player = db.prepare('SELECT riot_id FROM players WHERE id = ?').get(playerId) as { riot_id: string } | undefined
-  if (!player) throw createError({ statusCode: 404, statusMessage: 'player not found' })
+  if (!player) throw createError({ statusCode: 404, statusMessage: 'Joueur introuvable' })
   const [gameName, tagLine] = player.riot_id.split('#').map(s => s.trim())
-  if (!gameName || !tagLine) throw createError({ statusCode: 400, statusMessage: 'Set the Riot ID as Name#TAG first' })
+  if (!gameName || !tagLine) throw createError({ statusCode: 400, statusMessage: 'Renseigne d’abord le Riot ID au format Nom#TAG' })
 
   const { region } = riotHosts()
   const account = await riotGet<{ puuid: string }>(
     region, `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`)
   db.prepare('UPDATE players SET puuid = ? WHERE id = ?').run(account.puuid, playerId)
 
-  status.message = 'Listing ranked games…'
+  status.message = 'Liste des parties classées…'
   const { riotMatchCount } = useRuntimeConfig()
   const count = Math.min(100, Number(riotMatchCount) || 60)
   // SoloQ and Flex are listed separately so Flex games aren't crowded out by SoloQ.
@@ -68,7 +68,7 @@ async function runSync(playerId: number, status: SyncStatus) {
   const known = new Set((db.prepare('SELECT match_id FROM player_games WHERE puuid = ?').all(account.puuid) as { match_id: string }[]).map(r => r.match_id))
   const todo = ids.filter(id => !known.has(id))
   status.total = todo.length
-  status.message = todo.length ? `Fetching ${todo.length} new games…` : 'Already up to date'
+  status.message = todo.length ? `Récupération de ${todo.length} nouvelle(s) game(s)…` : 'Déjà à jour'
 
   const { champions } = await getChampions()
   const idByKey = new Map(champions.map(c => [c.key, c.id]))
@@ -114,7 +114,7 @@ async function runSync(playerId: number, status: SyncStatus) {
 
   db.prepare("UPDATE players SET soloq_synced_at = datetime('now') WHERE id = ?").run(playerId)
   status.state = 'done'
-  status.message = todo.length ? `${todo.length} new game(s) imported` : 'Already up to date'
+  status.message = todo.length ? `${todo.length} nouvelle(s) game(s) importée(s)` : 'Déjà à jour'
 }
 
 /** Ranked stats for one player: all ranked games, plus SoloQ and Flex apart. */

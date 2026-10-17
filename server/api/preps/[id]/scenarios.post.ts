@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
   const prepId = Number(getRouterParam(event, 'id'))
   const { copyFrom } = await readBody(event) ?? {}
   const db = useDb()
-  if (!db.prepare('SELECT 1 FROM preps WHERE id = ?').get(prepId)) throw createError({ statusCode: 404, statusMessage: 'prep not found' })
+  if (!db.prepare('SELECT 1 FROM preps WHERE id = ?').get(prepId)) throw createError({ statusCode: 404, statusMessage: 'Prep introuvable' })
 
   const { n, last } = db.prepare('SELECT COUNT(*) AS n, COALESCE(MAX(position), -1) AS last FROM prep_scenarios WHERE prep_id = ?').get(prepId) as { n: number, last: number }
   const source = copyFrom ? db.prepare('SELECT * FROM prep_scenarios WHERE id = ? AND prep_id = ?').get(Number(copyFrom), prepId) as any : null

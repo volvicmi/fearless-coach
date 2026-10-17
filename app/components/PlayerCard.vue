@@ -16,7 +16,7 @@ const pool = ref<PoolEntry[]>([...props.player.pool])
 watch(() => props.player.pool, p => (pool.value = [...p]))
 
 const byTier = computed(() => TIERS.map(tier => ({ tier, entries: pool.value.filter(e => e.tier === tier) })))
-const inPool = computed(() => new Map(pool.value.map(e => [e.champId, `Already ${e.tier === 'P' ? 'in Practice' : `${e.tier} tier`}`])))
+const inPool = computed(() => new Map(pool.value.map(e => [e.champId, `Déjà ${e.tier === 'P' ? 'en Entraînement' : `en tier ${e.tier}`}`])))
 
 const TIER_STYLE: Record<Tier, string> = {
   S: 'bg-amber-400 text-zinc-950',
@@ -26,11 +26,11 @@ const TIER_STYLE: Record<Tier, string> = {
   P: 'bg-violet-500 text-zinc-950',
 }
 const TIER_CAPTION: Record<Tier, string> = {
-  S: 'Best comfort',
-  A: 'Comfortable',
-  B: 'Playable',
+  S: 'Confort max',
+  A: 'Confortable',
+  B: 'Jouable',
   C: 'Pocket',
-  P: 'Practice',
+  P: 'Entraînement',
 }
 
 const tab = ref<'champions' | 'ranked'>('champions')
@@ -69,7 +69,7 @@ async function removeChamp(champId: string) {
 }
 
 async function removePlayer() {
-  if (!confirm(`Remove ${props.player.name} and their pool?`)) return
+  if (!confirm(`Retirer ${props.player.name} et son pool ?`)) return
   await $fetch(`/api/players/${props.player.id}`, { method: 'DELETE' })
   emit('changed')
 }
@@ -102,17 +102,17 @@ async function removePlayer() {
           :class="player.status === s ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-500 hover:text-zinc-200'"
           @click="player.status !== s && updatePlayer({ status: s })"
         >
-          {{ s === 'starter' ? 'Starter' : 'Sub' }}
+          {{ s === 'starter' ? 'Titulaire' : 'Remplaçant' }}
         </button>
       </div>
       <input
         :value="player.riotId"
-        placeholder="Riot ID (Name#TAG)"
+        placeholder="Riot ID (Nom#TAG)"
         class="w-56 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm"
         @change="updatePlayer({ riotId: ($event.target as HTMLInputElement).value })"
       >
       <button type="button" class="ml-auto text-xs text-zinc-500 hover:text-red-400" @click="removePlayer">
-        Remove player
+        Retirer le joueur
       </button>
     </div>
 
@@ -135,14 +135,14 @@ async function removePlayer() {
           </div>
           <div data-tier-items class="flex flex-1 flex-wrap content-start items-start gap-2 p-2">
             <span v-if="!group.entries.length" class="self-center px-2 text-xs text-zinc-600">
-              {{ group.tier === 'P' ? 'Drop the champions this player is training' : 'Drop champions here' }}
+              {{ group.tier === 'P' ? 'Dépose ici les champions que ce joueur travaille' : 'Dépose des champions ici' }}
             </span>
             <div v-for="e in group.entries" :key="e.champId" class="group relative w-16">
               <div
                 :data-drag-champ="e.champId"
                 :data-drag-from="e.tier"
                 class="flex cursor-grab touch-none flex-col items-center gap-0.5 rounded-md p-1 hover:bg-zinc-800 active:cursor-grabbing"
-                :title="`${nameOf(e.champId)} · drag to reorder (left = strongest), move to another row, or drop on the champion list to remove`"
+                :title="`${nameOf(e.champId)} · glisse pour réordonner (à gauche = le plus fort), change de ligne, ou dépose sur la liste des champions pour retirer`"
               >
                 <img :src="iconUrl(e.champId)" :alt="nameOf(e.champId)" draggable="false" class="size-14 select-none rounded-md">
                 <span class="w-full truncate text-center text-[10px] text-zinc-400">{{ nameOf(e.champId) }}</span>
@@ -150,7 +150,7 @@ async function removePlayer() {
               <button
                 type="button"
                 class="absolute -right-1 -top-1 hidden size-5 cursor-pointer place-items-center rounded-full bg-zinc-950 text-zinc-400 shadow ring-1 ring-zinc-700 transition-colors hover:bg-red-600 hover:text-white hover:ring-red-500 group-hover:grid"
-                :title="`Remove ${nameOf(e.champId)}`"
+                :title="`Retirer ${nameOf(e.champId)}`"
                 @click="removeChamp(e.champId)"
               >
                 <svg viewBox="0 0 12 12" class="size-2.5" aria-hidden="true">
@@ -191,7 +191,7 @@ async function removePlayer() {
         <SoloqPanel v-else class="min-h-0 flex-1 overflow-y-auto" :player="player" :icon-url="iconUrl" :name-of="nameOf" @changed="emit('changed')" />
 
         <p class="text-center text-[11px] text-zinc-600">
-          Drag a champion onto a row · Enter adds the first match to B · drag back here to remove
+          Glisse un champion sur une ligne · Entrée ajoute le premier résultat en B · glisse-le ici pour le retirer
         </p>
       </aside>
     </div>

@@ -13,6 +13,8 @@ const props = defineProps<{
 const emit = defineEmits<{ select: [id: string] }>()
 
 const TAGS = ['Fighter', 'Tank', 'Mage', 'Assassin', 'Marksman', 'Support']
+/** Libellés affichés ; les valeurs de TAGS restent celles de Data Dragon. */
+const TAG_LABEL: Record<string, string> = { Fighter: 'Combattant', Tank: 'Tank', Mage: 'Mage', Assassin: 'Assassin', Marksman: 'Tireur', Support: 'Support' }
 const search = ref('')
 const tag = ref<string | null>(null)
 const input = ref<HTMLInputElement>()
@@ -56,7 +58,7 @@ onMounted(() => input.value?.focus())
         ref="input"
         v-model="search"
         type="search"
-        placeholder="Search champion… (Enter = first match)"
+        placeholder="Chercher un champion… (Entrée = premier résultat)"
         class="min-w-48 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm outline-none focus:border-amber-400"
         @keydown.enter.prevent="onEnter"
       >
@@ -68,7 +70,7 @@ onMounted(() => input.value?.focus())
         :class="tag === t ? 'border-amber-400 text-amber-300' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200'"
         @click="tag = tag === t ? null : t"
       >
-        {{ t }}
+        {{ TAG_LABEL[t] ?? t }}
       </button>
     </div>
 

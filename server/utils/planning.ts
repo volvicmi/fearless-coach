@@ -56,12 +56,12 @@ export function isDiscordWebhook(url: string): boolean {
 
 export async function postToDiscord(content: string) {
   const webhook = getSetting('discordWebhook')
-  if (!webhook) throw createError({ statusCode: 400, statusMessage: 'No Discord webhook configured' })
+  if (!webhook) throw createError({ statusCode: 400, statusMessage: 'Aucun webhook Discord configuré' })
   try {
     await ofetch(webhook, { method: 'POST', body: { content, username: 'Fearless Coach' } })
   }
   catch (err: any) {
-    throw createError({ statusCode: 502, statusMessage: `Discord refused the message (${err?.statusCode ?? 'network'})` })
+    throw createError({ statusCode: 502, statusMessage: `Discord a refusé le message (${err?.statusCode ?? 'réseau'})` })
   }
 }
 

@@ -12,7 +12,7 @@ function pickProvider(): Provider {
   if (process.env.ANTHROPIC_API_KEY) return 'claude'
   throw createError({
     statusCode: 503,
-    statusMessage: 'No AI key: add GEMINI_API_KEY (free) or ANTHROPIC_API_KEY to .env and restart the server. "Copy context" works without a key.',
+    statusMessage: 'Aucune clé IA : ajoute GEMINI_API_KEY (gratuite) ou ANTHROPIC_API_KEY dans .env et redémarre le serveur. « Copier le contexte » fonctionne sans clé.',
   })
 }
 

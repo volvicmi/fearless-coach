@@ -29,13 +29,13 @@ export async function askClaude<S extends z.ZodType>(prompt: CoachPrompt, schema
     })
   }
   catch (err) {
-    if (err instanceof Anthropic.AuthenticationError) throw createError({ statusCode: 503, statusMessage: 'Invalid ANTHROPIC_API_KEY' })
-    if (err instanceof Anthropic.RateLimitError) throw createError({ statusCode: 429, statusMessage: 'Claude rate limit reached, retry in a moment' })
-    if (err instanceof Anthropic.APIError) throw createError({ statusCode: 502, statusMessage: `Claude API error ${err.status}: ${err.message}` })
+    if (err instanceof Anthropic.AuthenticationError) throw createError({ statusCode: 503, statusMessage: 'ANTHROPIC_API_KEY invalide' })
+    if (err instanceof Anthropic.RateLimitError) throw createError({ statusCode: 429, statusMessage: 'Limite de requêtes Claude atteinte, réessaie dans un instant' })
+    if (err instanceof Anthropic.APIError) throw createError({ statusCode: 502, statusMessage: `Erreur de l’API Claude ${err.status} : ${err.message}` })
     throw err
   }
 
-  if (response.stop_reason === 'refusal') throw createError({ statusCode: 502, statusMessage: 'Claude declined this request' })
-  if (response.parsed_output == null) throw createError({ statusCode: 502, statusMessage: 'Claude returned an unreadable answer' })
+  if (response.stop_reason === 'refusal') throw createError({ statusCode: 502, statusMessage: 'Claude a refusé cette demande' })
+  if (response.parsed_output == null) throw createError({ statusCode: 502, statusMessage: 'Claude a renvoyé une réponse illisible' })
   return { raw: response.parsed_output, model: response.model }
 }

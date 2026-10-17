@@ -4,13 +4,13 @@ const text = ref(data.value?.text ?? '')
 const state = ref<'saved' | 'saving' | 'unsaved' | 'error'>('saved')
 
 const PLACEHOLDER = `## Bot lane
-- Our combos: Ashe + Seraphine, Yunara + Lulu
-- Classic answer: Lucian + Milio, maybe weaker since the last patch
+- Nos combos : Ashe + Seraphine, Yunara + Lulu
+- Réponse classique : Lucian + Milio, peut-être plus faible depuis le dernier patch
 
 ## Patch notes
 - …
 
-## Against this opponent
+## Contre cet adversaire
 - …`
 
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -35,7 +35,7 @@ onBeforeUnmount(() => {
   if (state.value === 'unsaved') save()
 })
 
-const STATE_LABEL = { saved: 'Saved', saving: 'Saving…', unsaved: 'Unsaved changes', error: 'Could not save' }
+const STATE_LABEL = { saved: 'Enregistré', saving: 'Enregistrement…', unsaved: 'Modifications non enregistrées', error: 'Échec de l’enregistrement' }
 </script>
 
 <template>
@@ -43,14 +43,14 @@ const STATE_LABEL = { saved: 'Saved', saving: 'Saving…', unsaved: 'Unsaved cha
     <div class="flex flex-wrap items-end gap-4">
       <div>
         <h1 class="text-xl font-semibold">
-          Coach notes
+          Notes du coach
         </h1>
         <p class="text-sm text-zinc-400">
-          Free notes in markdown: combos, classic answers, patch changes, opponent habits… The AI coach reads them on every request.
+          Notes libres en markdown : combos, réponses classiques, changements de patch, habitudes des adversaires… Le coach IA les lit à chaque demande.
         </p>
       </div>
       <span class="ml-auto text-xs" :class="state === 'error' ? 'text-red-400' : state === 'saved' ? 'text-zinc-500' : 'text-amber-300'">
-        {{ STATE_LABEL[state] }} · {{ text.length.toLocaleString() }} / 20 000
+        {{ STATE_LABEL[state] }} · {{ text.length.toLocaleString('fr-FR') }} / 20 000
       </span>
     </div>
     <textarea

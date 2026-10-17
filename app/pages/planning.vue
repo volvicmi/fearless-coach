@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { WEEKDAYS, addDays, availabilityOn, fromIsoDate, mondayOf, summarizeDay, toIsoDate } from '#shared/planning'
+import { WEEKDAYS_FR, addDays, availabilityOn, fromIsoDate, mondayOf, summarizeDay, toIsoDate } from '#shared/planning'
 import type { PlanningPlayer, PlanningWeek } from '#shared/planning'
 
 const route = useRoute()
@@ -11,7 +11,7 @@ const { data: settings, refresh: refreshSettings } = await useFetch<Settings>('/
 
 const today = toIsoDate(new Date())
 const goWeek = (offset: number) => navigateTo({ query: { week: addDays(week.value, offset * 7) } })
-const label = (iso: string) => fromIsoDate(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+const label = (iso: string) => fromIsoDate(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 const summaries = computed(() => (data.value ? data.value.days.map(d => summarizeDay(data.value!.players, d)) : []))
 const starters = computed(() => data.value?.players.filter(p => p.status === 'starter').length ?? 0)
 
@@ -61,7 +61,7 @@ async function saveSettings(body: Record<string, unknown>) {
     if ('webhook' in body) webhook.value = ''
   }
   catch (e: any) {
-    notice.value = e?.data?.statusMessage ?? 'Could not save'
+    notice.value = e?.data?.statusMessage ?? 'Échec de l’enregistrement'
   }
 }
 
@@ -70,14 +70,14 @@ async function showPreview() {
 }
 
 async function sendNow() {
-  if (!confirm('Post the week summary to your Discord channel now?')) return
+  if (!confirm('Publier maintenant le résumé de la semaine sur ton salon Discord ?')) return
   notice.value = ''
   try {
     await $fetch('/api/planning/remind', { method: 'POST', body: {} })
-    notice.value = 'Sent to Discord ✓'
+    notice.value = 'Envoyé sur Discord ✓'
   }
   catch (e: any) {
-    notice.value = e?.data?.statusMessage ?? 'Could not send'
+    notice.value = e?.data?.statusMessage ?? 'Échec de l’envoi'
   }
 }
 
@@ -92,14 +92,14 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
           Planning
         </h1>
         <p class="text-sm text-zinc-400">
-          Set each player's usual days once below, then click a day to mark an exception.
+          Renseigne une fois ci-dessous les jours habituels de chaque joueur, puis clique sur un jour pour noter une exception.
         </p>
       </div>
       <div class="ml-auto flex items-center gap-2">
         <button type="button" class="cursor-pointer rounded-md border border-zinc-700 px-2.5 py-1 text-sm hover:bg-zinc-800" @click="goWeek(-1)">
           ←
         </button>
-        <span class="w-44 text-center text-sm font-medium">Week of {{ label(data.week) }}</span>
+        <span class="w-44 text-center text-sm font-medium">Semaine du {{ label(data.week) }}</span>
         <button type="button" class="cursor-pointer rounded-md border border-zinc-700 px-2.5 py-1 text-sm hover:bg-zinc-800" @click="goWeek(1)">
           →
         </button>
@@ -109,13 +109,13 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
           class="cursor-pointer px-2 text-xs text-zinc-400 hover:text-zinc-100"
           @click="navigateTo({ query: {} })"
         >
-          This week
+          Cette semaine
         </button>
       </div>
     </div>
 
     <p v-if="!data.players.length" class="text-sm text-zinc-500">
-      Add your players in the <NuxtLink to="/team" class="text-amber-300 underline">Team</NuxtLink> tab first.
+      Ajoute d’abord tes joueurs dans l’onglet <NuxtLink to="/team" class="text-amber-300 underline">Équipe</NuxtLink>.
     </p>
 
     <!-- Week grid -->
@@ -130,7 +130,7 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
               class="rounded-md py-1.5 text-center text-xs font-medium"
               :class="d === today ? 'bg-amber-400/15 text-amber-300' : 'text-zinc-400'"
             >
-              {{ WEEKDAYS[i] }} <span class="text-zinc-500">{{ label(d) }}</span>
+              {{ WEEKDAYS_FR[i] }} <span class="text-zinc-500">{{ label(d) }}</span>
             </th>
           </tr>
         </thead>
@@ -140,7 +140,7 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
               <span class="flex items-center gap-2">
                 <span class="w-7 text-[10px] font-bold text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>
                 <span class="truncate">{{ p.name }}</span>
-                <span v-if="p.status === 'sub'" class="rounded bg-zinc-800 px-1 text-[10px] uppercase text-zinc-400">sub</span>
+                <span v-if="p.status === 'sub'" class="rounded bg-zinc-800 px-1 text-[10px] uppercase text-zinc-400">remp.</span>
               </span>
             </td>
             <td v-for="d in data.days" :key="d" class="relative">
@@ -153,7 +153,7 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
                     : 'border-zinc-800 bg-zinc-900/40 text-zinc-600 hover:text-zinc-300',
                   editing?.playerId === p.id && editing.date === d && 'ring-2 ring-amber-400',
                 ]"
-                :title="availabilityOn(p, d).source === 'habit' ? 'Usual day' : availabilityOn(p, d).source === 'exception' ? 'Exception for this date' : 'No info'"
+                :title="availabilityOn(p, d).source === 'habit' ? 'Jour habituel' : availabilityOn(p, d).source === 'exception' ? 'Exception pour cette date' : 'Pas d’info'"
                 @click="openCell(p, d)"
               >
                 <template v-if="availabilityOn(p, d).available === true">✓ {{ availabilityOn(p, d).start }}</template>
@@ -170,11 +170,11 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
                 <div class="flex items-center gap-2">
                   <input v-model="editTime" type="time" class="flex-1 rounded border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 text-xs">
                   <button type="button" class="cursor-pointer rounded bg-emerald-600 px-2 py-1 text-xs font-semibold hover:bg-emerald-500" @click="setDay(true)">
-                    ✓ Available
+                    ✓ Dispo
                   </button>
                 </div>
                 <button type="button" class="cursor-pointer rounded bg-red-600/80 px-2 py-1 text-xs font-semibold hover:bg-red-500" @click="setDay(false)">
-                  ✗ Not available
+                  ✗ Pas dispo
                 </button>
                 <button
                   v-if="availabilityOn(p, d).source === 'exception'"
@@ -182,7 +182,7 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
                   class="cursor-pointer rounded px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                   @click="setDay(null)"
                 >
-                  ↺ Back to usual
+                  ↺ Comme d’habitude
                 </button>
               </div>
             </td>
@@ -191,16 +191,16 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
         <tfoot>
           <tr>
             <td class="pr-2 pt-2 text-xs text-zinc-500">
-              Starting five
+              Cinq de départ
             </td>
             <td v-for="s in summaries" :key="s.date" class="pt-2">
               <div
                 class="flex flex-col items-center rounded-md px-1 py-1.5 text-center text-xs"
                 :class="s.fullRoster ? 'bg-emerald-500/20 text-emerald-300' : s.available.length >= starters - 1 && starters ? 'bg-amber-400/10 text-amber-300' : 'bg-zinc-900/60 text-zinc-500'"
-                :title="s.missing.length ? `Missing: ${s.missing.map(p => p.name).join(', ')}` : 'Everyone is available'"
+                :title="s.missing.length ? `Manquants : ${s.missing.map(p => p.name).join(', ')}` : 'Tout le monde est dispo'"
               >
                 <span class="font-semibold">{{ s.available.length }}/{{ starters }}</span>
-                <span v-if="s.fullRoster && s.commonStart" class="text-[10px]">from {{ s.commonStart }}</span>
+                <span v-if="s.fullRoster && s.commonStart" class="text-[10px]">dès {{ s.commonStart }}</span>
                 <span v-else-if="s.missing.length" class="max-w-full truncate text-[10px]">− {{ s.missing.map(p => p.name).join(', ') }}</span>
               </div>
             </td>
@@ -212,12 +212,12 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
     <!-- Usual days -->
     <section v-if="data.players.length" class="flex flex-col gap-2">
       <h2 class="font-semibold">
-        Usual days <span class="text-sm font-normal text-zinc-500">· repeated every week, exceptions above win</span>
+        Jours habituels <span class="text-sm font-normal text-zinc-500">· répétés chaque semaine, les exceptions ci-dessus priment</span>
       </h2>
       <div class="flex flex-col gap-1.5">
         <div v-for="p in data.players" :key="p.id" class="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2">
           <span class="w-40 truncate text-sm">{{ p.name }}</span>
-          <div v-for="(day, i) in WEEKDAYS" :key="day" class="flex flex-col items-center gap-1">
+          <div v-for="(day, i) in WEEKDAYS_FR" :key="day" class="flex flex-col items-center gap-1">
             <button
               type="button"
               class="w-14 cursor-pointer rounded-md border py-1 text-xs"
@@ -242,10 +242,10 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
     <section v-if="settings" class="grid gap-4 rounded-xl border border-zinc-800 p-4 lg:grid-cols-2">
       <div class="flex flex-col gap-3">
         <h2 class="font-semibold">
-          Settings
+          Réglages
         </h2>
         <label class="flex items-center gap-3 text-sm">
-          <span class="w-40 text-zinc-400">Default time</span>
+          <span class="w-40 text-zinc-400">Heure par défaut</span>
           <input
             :value="settings.defaultTime"
             type="time"
@@ -254,10 +254,10 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
           >
         </label>
         <label class="flex items-center gap-3 text-sm">
-          <span class="w-40 text-zinc-400">Link in the message</span>
+          <span class="w-40 text-zinc-400">Lien dans le message</span>
           <input
             :value="settings.publicUrl"
-            placeholder="Where players fill their dispos (optional)"
+            placeholder="Où les joueurs remplissent leurs dispos (optionnel)"
             class="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
             @change="saveSettings({ publicUrl: ($event.target as HTMLInputElement).value })"
           >
@@ -266,41 +266,41 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
 
       <div class="flex flex-col gap-3">
         <h2 class="font-semibold">
-          Discord reminder
+          Rappel Discord
         </h2>
         <form class="flex items-center gap-2 text-sm" @submit.prevent="saveSettings({ webhook })">
           <input
             v-model="webhook"
             type="password"
             autocomplete="off"
-            :placeholder="settings.hasWebhook ? 'Webhook set ✓ (paste a new one to replace it)' : 'Discord webhook URL'"
+            :placeholder="settings.hasWebhook ? 'Webhook configuré ✓ (colles-en un nouveau pour le remplacer)' : 'URL du webhook Discord'"
             class="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
           >
           <button class="cursor-pointer rounded-md border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800">
-            Save
+            Enregistrer
           </button>
           <button v-if="settings.hasWebhook" type="button" class="cursor-pointer text-xs text-zinc-500 hover:text-red-400" @click="saveSettings({ webhook: '' })">
-            Remove
+            Retirer
           </button>
         </form>
         <div class="flex flex-wrap items-center gap-2 text-sm">
-          <span class="text-zinc-400">Post the week summary every</span>
+          <span class="text-zinc-400">Publier le résumé de la semaine chaque</span>
           <select
             :value="settings.reminderDay"
             class="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
             @change="saveSettings({ reminderDay: ($event.target as HTMLSelectElement).value })"
           >
             <option value="off">
-              — off —
+              — désactivé —
             </option>
             <option value="sunday">
-              Sunday (next week)
+              dimanche (semaine suivante)
             </option>
             <option value="monday">
-              Monday (this week)
+              lundi (semaine en cours)
             </option>
           </select>
-          <span class="text-zinc-400">at</span>
+          <span class="text-zinc-400">à</span>
           <select
             :value="settings.reminderHour"
             class="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
@@ -313,7 +313,7 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <button type="button" class="cursor-pointer rounded-md border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800" @click="showPreview">
-            Preview message
+            Aperçu du message
           </button>
           <button
             type="button"
@@ -321,12 +321,12 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
             :disabled="!settings.hasWebhook"
             @click="sendNow"
           >
-            Send now
+            Envoyer maintenant
           </button>
           <span v-if="notice" class="text-xs text-amber-300">{{ notice }}</span>
         </div>
         <p class="text-[11px] text-zinc-500">
-          Sent automatically while the app is running.<template v-if="settings.lastReminder"> Last automatic reminder: week of {{ label(settings.lastReminder) }}.</template>
+          Envoyé automatiquement tant que l’app tourne.<template v-if="settings.lastReminder"> Dernier rappel automatique : semaine du {{ label(settings.lastReminder) }}.</template>
         </p>
         <pre v-if="preview" class="whitespace-pre-wrap rounded-md bg-zinc-900 p-3 text-xs text-zinc-300">{{ preview }}</pre>
       </div>

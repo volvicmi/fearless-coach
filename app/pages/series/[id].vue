@@ -8,7 +8,7 @@ const route = useRoute()
 const id = route.params.id as string
 
 const { data, refresh } = await useFetch<SeriesDetail>(`/api/series/${id}`)
-if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Series not found', fatal: true })
+if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Série introuvable', fatal: true })
 
 const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (champ: string) => byId.value.get(champ)?.name ?? champ
@@ -19,6 +19,7 @@ const { data: combos } = await useFetch<Combo[]>('/api/combos')
 const activeN = ref(data.value.games.at(-1)?.n ?? 1)
 const game = computed(() => data.value?.games.find(g => g.n === activeN.value))
 const series = computed(() => data.value!.series)
+const SIDE_LABEL: Record<Side, string> = { blue: 'Bleu', red: 'Rouge' }
 const canAddGame = computed(() => data.value!.games.length < MAX_GAMES[series.value.format])
 
 const score = computed(() => {
@@ -87,7 +88,7 @@ async function nextGame() {
         </h1>
         <p class="text-sm text-zinc-400">
           vs {{ series.opponent || '?' }} · {{ series.format }} ·
-          {{ series.fearless === 'off' ? 'Normal draft' : 'Fearless' }} ·
+          {{ series.fearless === 'off' ? 'Draft normale' : 'Fearless' }} ·
           <span class="font-semibold text-zinc-200">{{ score.us }} – {{ score.them }}</span>
         </p>
       </div>
@@ -103,7 +104,7 @@ async function nextGame() {
         >
           G{{ g.n }}
           <span v-if="g.winner" :class="g.winner === g.ourSide ? 'text-emerald-500' : 'text-red-500'">
-            {{ g.winner === g.ourSide ? 'W' : 'L' }}
+            {{ g.winner === g.ourSide ? 'V' : 'D' }}
           </span>
         </button>
         <button
@@ -112,27 +113,27 @@ async function nextGame() {
           class="rounded-md border border-dashed border-zinc-700 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-100"
           @click="nextGame"
         >
-          + Next game
+          + Game suivante
         </button>
       </nav>
     </div>
 
     <template v-if="game">
       <div class="flex flex-wrap items-center gap-3 text-sm">
-        <span class="text-zinc-400">We are</span>
+        <span class="text-zinc-400">Nous sommes</span>
         <button
           v-for="s in (['blue', 'red'] as const)"
           :key="s"
           type="button"
           class="rounded-md px-3 py-1 capitalize"
           :class="game.ourSide === s ? (s === 'blue' ? 'bg-side-blue' : 'bg-side-red') : 'cursor-pointer bg-zinc-900 text-zinc-400 hover:text-zinc-100'"
-          title="Switch our side at any time: the draft stays, only which side is ours changes"
+          title="Change notre côté à tout moment : la draft reste, seul notre côté change"
           @click="game.ourSide !== s && patchGame(game, { ourSide: s })"
         >
-          {{ s }}
+          {{ SIDE_LABEL[s] }}
         </button>
 
-        <span class="ml-6 text-zinc-400">Winner</span>
+        <span class="ml-6 text-zinc-400">Gagnant</span>
         <button
           v-for="s in (['blue', 'red'] as const)"
           :key="`w-${s}`"
@@ -141,7 +142,7 @@ async function nextGame() {
           :class="game.winner === s ? 'bg-emerald-600' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-100'"
           @click="patchGame(game, { winner: game.winner === s ? null : s })"
         >
-          {{ s }}
+          {{ SIDE_LABEL[s] }}
         </button>
       </div>
 
@@ -171,11 +172,11 @@ async function nextGame() {
 
       <section v-if="series.fearless !== 'off'" class="rounded-lg border border-zinc-800 p-3">
         <h3 class="mb-2 text-sm font-semibold">
-          Locked by Fearless
-          <span class="font-normal text-zinc-500">· both teams ({{ lockedByGame.reduce((n, g) => n + g.champs.length, 0) }})</span>
+          Bloqués par le Fearless
+          <span class="font-normal text-zinc-500">· les deux équipes ({{ lockedByGame.reduce((n, g) => n + g.champs.length, 0) }})</span>
         </h3>
         <p v-if="!lockedByGame.length" class="text-xs text-zinc-500">
-          Nothing locked yet: picks from this game get locked from the next one.
+          Rien de bloqué pour l’instant : les picks de cette game seront bloqués dès la suivante.
         </p>
         <div v-for="group in lockedByGame" :key="group.n" class="flex items-center gap-2 py-0.5">
           <span class="w-7 text-xs text-zinc-500">G{{ group.n }}</span>

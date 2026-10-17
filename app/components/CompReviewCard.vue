@@ -16,7 +16,7 @@ defineProps<{
   <article class="flex flex-col gap-2 rounded-md bg-zinc-900/60 p-3">
     <header class="flex items-center gap-2">
       <span class="text-sm font-semibold capitalize" :class="side === 'blue' ? 'text-side-blue' : 'text-side-red'">
-        {{ side }} · {{ isUs ? 'Us' : 'Them' }}
+        {{ side === 'blue' ? 'Bleu' : 'Rouge' }} · {{ isUs ? 'Nous' : 'Eux' }}
       </span>
       <span class="ml-auto text-lg font-bold tabular-nums">{{ comp.winRate }}%</span>
     </header>
@@ -28,7 +28,7 @@ defineProps<{
     </p>
     <div>
       <h4 class="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-        Win conditions
+        Conditions de victoire
       </h4>
       <ul class="list-inside list-disc text-xs text-zinc-300">
         <li v-for="w in comp.winConditions" :key="w">
@@ -37,14 +37,14 @@ defineProps<{
       </ul>
     </div>
     <p class="text-xs">
-      <span class="font-semibold text-zinc-400">Power spikes:</span> {{ comp.powerSpikes }}
+      <span class="font-semibold text-zinc-400">Pics de puissance :</span> {{ comp.powerSpikes }}
     </p>
     <p class="text-xs">
-      <span class="font-semibold text-zinc-400">Game plan:</span> {{ comp.gamePlan }}
+      <span class="font-semibold text-zinc-400">Plan de jeu :</span> {{ comp.gamePlan }}
     </p>
     <div>
       <h4 class="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-        {{ isUs ? 'How they can beat us' : 'How to beat them' }}
+        {{ isUs ? 'Comment ils peuvent nous battre' : 'Comment les battre' }}
       </h4>
       <ul class="list-inside list-disc text-xs text-zinc-300">
         <li v-for="c in comp.howToCounter" :key="c">

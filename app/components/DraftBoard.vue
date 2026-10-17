@@ -20,18 +20,18 @@ const done = computed(() => !current.value)
 const disabled = computed(() => {
   const reasons = new Map<string, string>()
   props.game.actions.forEach((champ, i) => {
-    if (champ !== NO_BAN) reasons.set(champ, DRAFT_ORDER[i]!.type === 'ban' ? 'Banned' : 'Picked')
+    if (champ !== NO_BAN) reasons.set(champ, DRAFT_ORDER[i]!.type === 'ban' ? 'Banni' : 'Pické')
   })
   for (const [champ, n] of fearlessLocked(props.fearless, props.games, props.game)) {
-    if (!reasons.has(champ)) reasons.set(champ, `Fearless · played in G${n}`)
+    if (!reasons.has(champ)) reasons.set(champ, `Fearless · joué en G${n}`)
   }
   return reasons
 })
 
 const actor = computed(() => {
   if (!current.value) return ''
-  const who = current.value.side === props.game.ourSide ? 'Us' : 'Them'
-  return `${current.value.side} ${current.value.type} ${current.value.slot + 1} · ${who}`
+  const who = current.value.side === props.game.ourSide ? 'Nous' : 'Eux'
+  return `${current.value.side === 'blue' ? 'Bleu' : 'Rouge'} ${current.value.type} ${current.value.slot + 1} · ${who}`
 })
 
 const play = (champ: string) => emit('update', [...props.game.actions, champ])
@@ -61,11 +61,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <div class="flex min-h-0 flex-col gap-3 lg:h-[70vh]">
       <div class="flex items-center gap-3">
         <p v-if="!done" class="text-sm">
-          Now: <span class="font-semibold capitalize" :class="current?.side === 'blue' ? 'text-side-blue' : 'text-side-red'">{{ actor }}</span>
-          <span class="text-zinc-500"> · step {{ game.actions.length + 1 }}/20</span>
+          En cours : <span class="font-semibold capitalize" :class="current?.side === 'blue' ? 'text-side-blue' : 'text-side-red'">{{ actor }}</span>
+          <span class="text-zinc-500"> · étape {{ game.actions.length + 1 }}/20</span>
         </p>
         <p v-else class="text-sm font-semibold text-emerald-400">
-          Draft complete
+          Draft terminée
         </p>
         <div class="ml-auto flex gap-2">
           <button
@@ -74,7 +74,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             class="rounded-md border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800"
             @click="play(NO_BAN)"
           >
-            Skip ban
+            Passer le ban
           </button>
           <button
             type="button"
@@ -83,7 +83,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             title="Ctrl+Z"
             @click="undo"
           >
-            Undo
+            Annuler
           </button>
         </div>
       </div>

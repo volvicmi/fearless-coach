@@ -20,7 +20,7 @@ async function fetchPage(path: string): Promise<string> {
     return await ofetch(`${BASE}${path}`, { responseType: 'text', headers: { 'User-Agent': USER_AGENT } })
   }
   catch (err: any) {
-    throw createError({ statusCode: 502, statusMessage: `gol.gg unreachable (${err?.statusCode ?? 'network'}) for ${path}` })
+    throw createError({ statusCode: 502, statusMessage: `gol.gg injoignable (${err?.statusCode ?? 'réseau'}) pour ${path}` })
   }
 }
 
@@ -45,11 +45,11 @@ export function proSyncStatus(name: string): SyncStatus {
 export function startProSync(name: string): SyncStatus {
   const current = jobs.get(name)
   if (current?.state === 'running') return current
-  const status: SyncStatus = { state: 'running', done: 0, total: 0, message: 'Reading champion stats…' }
+  const status: SyncStatus = { state: 'running', done: 0, total: 0, message: 'Lecture des stats des champions…' }
   jobs.set(name, status)
   syncTournament(name, status).catch((err) => {
     status.state = 'error'
-    status.message = err?.statusMessage ?? err?.message ?? 'Sync failed'
+    status.message = err?.statusMessage ?? err?.message ?? 'Échec de la synchronisation'
   })
   return status
 }
@@ -62,7 +62,7 @@ async function syncTournament(name: string, status: SyncStatus) {
   // 1. Champion stats of the whole tournament.
   const listHtml = await fetchPage(`/champion/list/season-ALL/split-ALL/tournament-${enc(name)}/`)
   const stats = parseChampionTable(listHtml, resolve)
-  if (!stats.length) throw createError({ statusCode: 404, statusMessage: `No champion stats on gol.gg for "${name}": check the exact tournament name` })
+  if (!stats.length) throw createError({ statusCode: 404, statusMessage: `Aucune stat de champion sur gol.gg pour « ${name} » : vérifie le nom exact du tournoi` })
   db.exec('BEGIN')
   db.prepare('DELETE FROM pro_champ_stats WHERE tournament = ?').run(name)
   const insertStat = db.prepare(`INSERT INTO pro_champ_stats
@@ -71,13 +71,13 @@ async function syncTournament(name: string, status: SyncStatus) {
   db.exec('COMMIT')
 
   // 2. Series list, then each new series page (it holds every game's draft).
-  status.message = 'Listing series…'
+  status.message = 'Liste des séries…'
   const matchHtml = await fetchPage(`/tournament/tournament-matchlist/${enc(name)}/`)
   const series = parseMatchList(matchHtml)
   const known = new Set((db.prepare('SELECT series_id FROM pro_series WHERE tournament = ?').all(name) as { series_id: number }[]).map(r => r.series_id))
   const todo = series.filter(s => !known.has(s.id))
   status.total = todo.length
-  status.message = todo.length ? `Reading ${todo.length} new series…` : 'Already up to date'
+  status.message = todo.length ? `Lecture de ${todo.length} nouvelle(s) série(s)…` : 'Déjà à jour'
 
   const insertSeries = db.prepare('INSERT OR IGNORE INTO pro_series (series_id, tournament, date, patch) VALUES (?, ?, ?, ?)')
   const insertGame = db.prepare(`INSERT OR REPLACE INTO pro_games
@@ -95,7 +95,7 @@ async function syncTournament(name: string, status: SyncStatus) {
   db.prepare(`INSERT INTO pro_tournaments (name, synced_at) VALUES (?, datetime('now'))
     ON CONFLICT (name) DO UPDATE SET synced_at = excluded.synced_at`).run(name)
   status.state = 'done'
-  status.message = todo.length ? `${todo.length} new series imported` : 'Already up to date'
+  status.message = todo.length ? `${todo.length} nouvelle(s) série(s) importée(s)` : 'Déjà à jour'
 }
 
 // ---------- parsing ----------

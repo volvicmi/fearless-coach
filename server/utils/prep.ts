@@ -42,7 +42,7 @@ export async function validateSlots(slots: unknown): Promise<string[][]> {
       && s.length <= MAX_ALTERNATIVES
       && new Set(s).size === s.length
       && s.every(c => typeof c === 'string' && ids.has(c)))
-  if (!ok) throw createError({ statusCode: 400, statusMessage: 'invalid slots' })
+  if (!ok) throw createError({ statusCode: 400, statusMessage: 'Étapes invalides' })
   return slots as string[][]
 }
 
@@ -74,6 +74,6 @@ export function loadPreparedDrafts(opponent: string | undefined, limit = 8): Pre
 }
 
 export function validateColor(color: unknown): string {
-  if (!SCENARIO_COLORS.includes(color as any)) throw createError({ statusCode: 400, statusMessage: 'invalid color' })
+  if (!SCENARIO_COLORS.includes(color as any)) throw createError({ statusCode: 400, statusMessage: 'Style invalide' })
   return color as string
 }
