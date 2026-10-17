@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { z } from 'zod'
 import { DRAFT_ORDER, NO_BAN, fearlessLocked, otherSide, picksOf, slotsOf } from '#shared/draft'
 import type { DraftStep, FearlessMode, SeriesFormat, Side } from '#shared/draft'
@@ -87,6 +89,25 @@ REVIEW (draft complete): analyse both final compositions.
 
 Write every text field in correct French with all accents (é, è, à, ç…), concise and concrete, like a coach talking to players.`
 
+/**
+ * Stable reference files from the project's `context/` folder (game knowledge only). Missing file = skipped.
+ * Team data (pools, combos) is never duplicated in a file: it comes straight from the database.
+ */
+const CONTEXT_FILES = ['regles.md']
+
+function contextBlock(): string {
+  return CONTEXT_FILES
+    .map((name) => {
+      try {
+        return readFileSync(resolve(process.cwd(), 'context', name), 'utf8').trim()
+      } catch {
+        return ''
+      }
+    })
+    .filter(Boolean)
+    .join('\n\n')
+}
+
 /** Loads everything the coach needs for one game. */
 export async function loadCoachContext(gameId: number): Promise<CoachContext> {
   const db = useDb()
@@ -122,9 +143,23 @@ function teamBlock(team: Player[], nameOf: (id: string) => string): string {
       .map(c => `${nameOf(c.champId)} ${c.games}g ${Math.round((c.wins / c.games) * 100)}%WR KDA ${((c.kills + c.assists) / Math.max(1, c.deaths)).toFixed(1)}${c.recent ? ` (${c.recent} in 30d)` : ''}`)
       .join(', ')
     const queues = p.soloq ? ` (${p.soloq.solo.games} SoloQ, ${p.soloq.flex.games} Flex)` : ''
-    return `- ${p.name} (${p.role}): pool ${pool}${ranked ? `\n  ranked games${queues}: ${ranked}` : ''}`
+    return `- ${p.name} (${p.role}${p.status === 'sub' ? ', substitute' : ''}): pool ${pool}${ranked ? `\n  ranked games${queues}: ${ranked}` : ''}`
   })
-  return `OUR TEAM POOLS (tier S = most comfortable; listed strongest first, also inside each tier) and recent ranked stats (SoloQ/Flex, small samples are noisy):\n${lines.join('\n')}`
+
+  // Champions that sit in several players' pools (e.g. Viktor mid and adc): the role must be checked.
+  const owners = new Map<string, string[]>()
+  for (const p of team) {
+    for (const e of p.pool) {
+      if (e.tier !== 'P') owners.set(e.champId, [...(owners.get(e.champId) ?? []), `${p.name} ${p.role} ${e.tier}`])
+    }
+  }
+  const shared = [...owners].filter(([, who]) => who.length > 1).map(([c, who]) => `${nameOf(c)} (${who.join(', ')})`)
+
+  return [
+    'OUR TEAM POOLS, straight from our Team tab. Tiers: S = mastered, first choices unless the comp needs something else; A = good picks; B = backups / flex; C = only if needed. Practising = not ready: never recommend it for an official game. Inside a tier, the first listed is the strongest. Ranked stats (SoloQ/Flex) are small samples: they nuance a tier, they never replace it.',
+    lines.join('\n'),
+    shared.length ? `In several players' pools (check which role it would be played in before recommending it): ${shared.join('; ')}` : '',
+  ].filter(Boolean).join('\n')
 }
 
 function combosBlock(combos: Combo[] | undefined, nameOf: (id: string) => string): string {
@@ -230,7 +265,8 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
 
   // Pools, pro meta and notes change rarely: they form the cached part of the prompt.
   const team = [teamBlock(ctx.team, nameOf), combosBlock(ctx.combos, nameOf), proMetaBlock(ctx.pro, nameOf), notesBlock()].filter(Boolean).join('\n\n')
-  return { mode, system: COACH_SYSTEM_PROMPT, team, request }
+  const system = [COACH_SYSTEM_PROMPT, contextBlock()].filter(Boolean).join('\n\n')
+  return { mode, system, team, request }
 }
 
 /** Drops anything the board would refuse (unknown or unavailable champions) and keeps the top 3. */

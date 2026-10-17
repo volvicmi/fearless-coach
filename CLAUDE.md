@@ -77,6 +77,7 @@ Data Dragon (Riot) : champions et icônes
 
 - **Fournisseurs** : `server/utils/coach-gemini.ts` (chaîne de modèles gratuits, ordre réglable par `NUXT_GEMINI_MODELS`, un modèle en 429 est mis de côté 10 min) et `server/utils/coach-claude.ts`. Choix automatique selon les clés présentes (`NUXT_COACH_PROVIDER` pour forcer).
 - **Un seul constructeur de prompt** : `server/utils/coach-prompt.ts`, réutilisé par le bouton « Copier le contexte ».
+- **Connaissances du jeu** dans `context/regles.md` (stable, ajouté au prompt système). Les données d'équipe (pools, tiers, combos, titulaires) ne sont **jamais recopiées dans un fichier** : le prompt les lit directement en base, comme l'onglet Équipe. Pas de fichier de patch à maintenir à la main.
 - **Sources pesées ensemble, sans priorité** : tous les champions disponibles, tier lists, stats ranked, méta et drafts pro, notes, combos, drafts préparées (celles contre l'adversaire d'abord), état de la série et Fearless.
 - **Réponses en JSON validé par Zod** avant affichage (conseil, prédiction, review).
 - **Winrate** : la review part d'une estimation chiffrée (`shared/winrate.ts` : WR pro lissé, confort de nos joueurs, mix de dégâts) que l'IA peut ajuster de ±10 points au maximum, en expliquant pourquoi. Aucune autre statistique ne doit être inventée.

@@ -5,7 +5,6 @@
       "name": "fearless-coach",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "C:\\Dev\\Perso\\fearless-coach",
       "port": 3000
     }
   ]
