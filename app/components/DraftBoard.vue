@@ -50,7 +50,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <div class="grid gap-6 lg:grid-cols-[220px_1fr_220px]">
+  <div class="grid gap-5 lg:grid-cols-[200px_minmax(0,1fr)_200px]">
     <DraftSide
       side="blue"
       :is-us="game.ourSide === 'blue'"
@@ -91,6 +91,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
 
       <ChampionGrid
+        class="flex-1"
         :champions="champions"
         :disabled="disabled"
         :icon-url="iconUrl"

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { MAX_GAMES, fearlessLocked, otherSide } from '#shared/draft'
 import type { Side } from '#shared/draft'
-import type { Game, SeriesDetail } from '#shared/types'
+import type { CoachContext } from '#shared/coach'
+import type { Game, Player, SeriesDetail } from '#shared/types'
 
 const route = useRoute()
 const id = route.params.id as string
@@ -11,6 +12,7 @@ if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Series not
 
 const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (champ: string) => byId.value.get(champ)?.name ?? champ
+const { data: team } = await useFetch<Player[]>('/api/team')
 
 const activeN = ref(data.value.games.at(-1)?.n ?? 1)
 const game = computed(() => data.value?.games.find(g => g.n === activeN.value))
@@ -35,6 +37,15 @@ const locked = computed(() => {
   const list = (side: Side) =>
     [...fearlessLocked(series.value.fearless, data.value!.games, g, side)].map(([champ, n]) => ({ champ, n }))
   return { us: list(g.ourSide), them: list(otherSide(g.ourSide)) }
+})
+
+const coachCtx = computed<CoachContext | undefined>(() => game.value && {
+  game: game.value,
+  games: data.value!.games,
+  fearless: series.value.fearless,
+  format: series.value.format,
+  team: team.value ?? [],
+  champions: champions.value,
 })
 
 /** Saves run one after another so fast clicks + undo reach the server in the right order. */
@@ -128,16 +139,29 @@ async function nextGame() {
         </button>
       </div>
 
-      <DraftBoard
-        :key="game.id"
-        :game="game"
-        :games="data.games"
-        :fearless="series.fearless"
-        :champions="champions"
-        :icon-url="iconUrl"
-        :name-of="nameOf"
-        @update="actions => patchGame(game!, { actions })"
-      />
+      <!-- Wide screens: coach in a side column so it stays visible during the draft -->
+      <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <DraftBoard
+          :key="game.id"
+          :game="game"
+          :games="data.games"
+          :fearless="series.fearless"
+          :champions="champions"
+          :icon-url="iconUrl"
+          :name-of="nameOf"
+          @update="actions => patchGame(game!, { actions })"
+        />
+
+        <CoachPanel
+          v-if="coachCtx"
+          :key="`coach-${game.id}`"
+          :ctx="coachCtx"
+          :game-id="game.id"
+          :icon-url="iconUrl"
+          :name-of="nameOf"
+          @play="champ => patchGame(game!, { actions: [...game!.actions, champ] })"
+        />
+      </div>
 
       <section v-if="series.fearless !== 'off'" class="grid gap-4 md:grid-cols-2">
         <div v-for="team in (['us', 'them'] as const)" :key="team" class="rounded-lg border border-zinc-800 p-3">
