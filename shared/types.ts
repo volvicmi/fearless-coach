@@ -134,6 +134,14 @@ export interface Player {
   soloq: SoloqSummary | null
 }
 
+/** A practised combo: one champion and the partners that go with it (Jhin + Shen / Camille / Alistar). */
+export interface Combo {
+  id: number
+  anchor: string
+  partners: string[]
+  note: string
+}
+
 /** Draft style of a prepared scenario (stored in the `color` column). */
 export const SCENARIO_COLORS = ['engage', 'poke', 'front-to-back'] as const
 export type ScenarioColor = typeof SCENARIO_COLORS[number]

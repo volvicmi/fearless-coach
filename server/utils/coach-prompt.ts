@@ -4,8 +4,11 @@ import type { DraftStep, FearlessMode, SeriesFormat, Side } from '#shared/draft'
 import { assignRoles, stepLabel, suggestPicks, unavailableNow } from '#shared/coach'
 import { estimateWinRate } from '#shared/winrate'
 import type { CoachContext } from '#shared/coach'
-import type { CoachAdvice, CoachMode, CoachReview, Player, ProDraft, ProMeta } from '#shared/types'
+import type { CoachAdvice, CoachMode, CoachReview, Combo, Player, ProDraft, ProMeta } from '#shared/types'
 import { loadProDrafts, loadProMeta } from './pro'
+import { loadPreparedDrafts } from './prep'
+import type { PreparedDraft } from './prep'
+import { loadCombos } from './combos'
 
 /** Our turn (advice) and their turn (prediction) share one answer shape. */
 export const AdviceSchema = z.object({
@@ -55,6 +58,8 @@ You get several sources. Weigh them all together, none of them overrides the oth
 - our players' tier lists (strongest first, also inside each tier) and their recent ranked stats;
 - the pro meta (presence, win rate, pick round in LCK/LEC) and real pro drafts that were actually played;
 - the coach notes written by our staff (combos, usual answers, patch remarks): useful knowledge, to weigh like the rest;
+- our practised combos (a champion and the partners it is played with, e.g. a bot lane carry and its supports): when one side of a combo is picked, its partners are natural follow-ups;
+- our prepared drafts (staff plans, with backup options per step, some prepared against this exact opponent): say when the live draft follows or leaves a plan, and suggest the planned option when it still fits;
 - the current draft, the previous games of the series and the Fearless locks.
 
 Each request ends with a TASK. There are three kinds of task.
@@ -88,10 +93,13 @@ export async function loadCoachContext(gameId: number): Promise<CoachContext> {
   const gameRow = db.prepare('SELECT * FROM games WHERE id = ?').get(gameId)
   if (!gameRow) throw createError({ statusCode: 404, statusMessage: 'game not found' })
   const game = toGame(gameRow)
-  const series = db.prepare('SELECT format, fearless FROM series WHERE id = ?').get(game.seriesId) as { format: SeriesFormat, fearless: FearlessMode }
+  const series = db.prepare('SELECT format, fearless, opponent FROM series WHERE id = ?').get(game.seriesId) as { format: SeriesFormat, fearless: FearlessMode, opponent: string }
   const games = (db.prepare('SELECT * FROM games WHERE series_id = ? ORDER BY n').all(game.seriesId) as any[]).map(toGame)
   const { champions } = await getChampions()
-  return { game, games, fearless: series.fearless, format: series.format, team: loadTeam(), champions, pro: loadProMeta() }
+  return {
+    game, games, fearless: series.fearless, format: series.format, team: loadTeam(), champions,
+    pro: loadProMeta(), combos: loadCombos(), opponent: series.opponent,
+  }
 }
 
 /** What the coach can do right now: advise on our turn, predict on theirs, review once the draft is done. */
@@ -117,6 +125,34 @@ function teamBlock(team: Player[], nameOf: (id: string) => string): string {
     return `- ${p.name} (${p.role}): pool ${pool}${ranked ? `\n  ranked games${queues}: ${ranked}` : ''}`
   })
   return `OUR TEAM POOLS (tier S = most comfortable; listed strongest first, also inside each tier) and recent ranked stats (SoloQ/Flex, small samples are noisy):\n${lines.join('\n')}`
+}
+
+function combosBlock(combos: Combo[] | undefined, nameOf: (id: string) => string): string {
+  if (!combos?.length) return ''
+  const lines = combos.map(c => `- ${nameOf(c.anchor)} + ${c.partners.map(nameOf).join(' / ') || '(no partner yet)'}${c.note ? ` (${c.note})` : ''}`)
+  return `OUR PRACTISED COMBOS:\n${lines.join('\n')}`
+}
+
+function preparedDraftsBlock(drafts: PreparedDraft[], opponent: string | undefined, nameOf: (id: string) => string): string {
+  if (!drafts.length) return ''
+  const steps = (d: PreparedDraft, side: Side, type: 'ban' | 'pick') => DRAFT_ORDER
+    .map((s, i) => ({ s, alts: d.slots[i] ?? [] }))
+    .filter(({ s, alts }) => s.side === side && s.type === type && alts.length)
+    .map(({ s, alts }) => `${type === 'pick' ? `${side === 'blue' ? 'B' : 'R'}${s.slot + 1} ` : ''}${alts.map(nameOf).join('/')}`)
+    .join(', ')
+  const lines = drafts.map((d) => {
+    const them = otherSide(d.ourSide)
+    return [
+      `- "${d.name}" (${d.color}, we ${d.ourSide}) from prep "${d.prepName}"${d.matchesOpponent ? ` against ${d.opponent}` : d.opponent ? ` (vs ${d.opponent})` : ''}`,
+      `  our bans: ${steps(d, d.ourSide, 'ban') || '-'}; their bans: ${steps(d, them, 'ban') || '-'}`,
+      `  our picks: ${steps(d, d.ourSide, 'pick') || '-'}; expected from them: ${steps(d, them, 'pick') || '-'}`,
+      d.notes ? `  notes: ${d.notes.replace(/\s+/g, ' ').slice(0, 300)}` : '',
+    ].filter(Boolean).join('\n')
+  })
+  const header = drafts.some(d => d.matchesOpponent)
+    ? `OUR PREPARED DRAFTS (first ones prepared against ${opponent}; "A/B" = main choice / backups):`
+    : 'OUR PREPARED DRAFTS (none prepared against this opponent; "A/B" = main choice / backups):'
+  return `${header}\n${lines.join('\n')}`
 }
 
 function notesBlock(): string {
@@ -187,6 +223,7 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
     `CURRENT DRAFT:\n${draft.length ? draft.join('\n') : '(draft not started)'}`,
     `OUR PICKS (${us}): ${picksText(us)}`,
     `THEIR PICKS (${them}): ${picksText(them)}`,
+    preparedDraftsBlock(loadPreparedDrafts(ctx.opponent), ctx.opponent, nameOf),
     proDraftsBlock(loadProDrafts(ctx.game.actions.filter(a => a !== NO_BAN), 10), nameOf),
     shortlist.length ? `ENGINE SHORTLIST:\n${shortlist.join('\n')}` : '',
     mode === 'review' ? '' : `AVAILABLE for this step: ${available.join(', ')}`,
@@ -194,7 +231,7 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
   ].filter(Boolean).join('\n\n')
 
   // Pools, pro meta and notes change rarely: they form the cached part of the prompt.
-  const team = [teamBlock(ctx.team, nameOf), proMetaBlock(ctx.pro, nameOf), notesBlock()].filter(Boolean).join('\n\n')
+  const team = [teamBlock(ctx.team, nameOf), combosBlock(ctx.combos, nameOf), proMetaBlock(ctx.pro, nameOf), notesBlock()].filter(Boolean).join('\n\n')
   return { mode, system: COACH_SYSTEM_PROMPT, team, request }
 }
 

@@ -46,6 +46,33 @@ export async function validateSlots(slots: unknown): Promise<string[][]> {
   return slots as string[][]
 }
 
+export interface PreparedDraft extends PrepScenario {
+  prepName: string
+  opponent: string
+  /** Prepared against the opponent of the series */
+  matchesOpponent: boolean
+}
+
+/** Our prepared drafts: those against `opponent` first, then the most recent preps. */
+export function loadPreparedDrafts(opponent: string | undefined, limit = 8): PreparedDraft[] {
+  const target = (opponent ?? '').trim().toLowerCase()
+  const rows = useDb().prepare(`
+    SELECT s.*, p.name AS prep_name, p.opponent AS prep_opponent
+    FROM prep_scenarios s JOIN preps p ON p.id = s.prep_id
+    ORDER BY p.id DESC, s.position, s.id
+  `).all() as any[]
+  return rows
+    .map(r => ({
+      ...toScenario(r),
+      prepName: r.prep_name,
+      opponent: r.prep_opponent,
+      matchesOpponent: !!target && r.prep_opponent.trim().toLowerCase() === target,
+    }))
+    .filter(s => s.slots.some(alts => alts.length))
+    .sort((a, b) => Number(b.matchesOpponent) - Number(a.matchesOpponent))
+    .slice(0, limit)
+}
+
 export function validateColor(color: unknown): string {
   if (!SCENARIO_COLORS.includes(color as any)) throw createError({ statusCode: 400, statusMessage: 'invalid color' })
   return color as string

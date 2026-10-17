@@ -78,6 +78,15 @@ export function useDb(): DatabaseSync {
       PRIMARY KEY (player_id, date)
     );
 
+    -- Combos: a champion (e.g. an ADC) and the partners it is practised with (its supports…).
+    CREATE TABLE IF NOT EXISTS combos (
+      id       INTEGER PRIMARY KEY AUTOINCREMENT,
+      anchor   TEXT NOT NULL,
+      partners TEXT NOT NULL DEFAULT '[]',
+      note     TEXT NOT NULL DEFAULT '',
+      position INTEGER NOT NULL DEFAULT 0
+    );
+
     -- Free-form values such as the coach notes.
     CREATE TABLE IF NOT EXISTS settings (
       key   TEXT PRIMARY KEY,

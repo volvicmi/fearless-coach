@@ -2,7 +2,7 @@
 import { MAX_GAMES, fearlessLocked, otherSide } from '#shared/draft'
 import type { Side } from '#shared/draft'
 import type { CoachContext } from '#shared/coach'
-import type { Game, Player, ProMeta, SeriesDetail } from '#shared/types'
+import type { Combo, Game, Player, ProMeta, SeriesDetail } from '#shared/types'
 
 const route = useRoute()
 const id = route.params.id as string
@@ -14,6 +14,7 @@ const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (champ: string) => byId.value.get(champ)?.name ?? champ
 const { data: team } = await useFetch<Player[]>('/api/team')
 const { data: pro } = await useFetch<{ meta: ProMeta }>('/api/pro')
+const { data: combos } = await useFetch<Combo[]>('/api/combos')
 
 const activeN = ref(data.value.games.at(-1)?.n ?? 1)
 const game = computed(() => data.value?.games.find(g => g.n === activeN.value))
@@ -50,6 +51,8 @@ const coachCtx = computed<CoachContext | undefined>(() => game.value && {
   team: team.value ?? [],
   champions: champions.value,
   pro: pro.value?.meta,
+  combos: combos.value ?? [],
+  opponent: series.value.opponent,
 })
 
 /** Saves run one after another so fast clicks + undo reach the server in the right order. */

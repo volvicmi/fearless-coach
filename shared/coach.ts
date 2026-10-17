@@ -1,7 +1,7 @@
 import { DRAFT_ORDER, MAX_GAMES, NO_BAN, fearlessLocked, picksOf } from './draft'
 import type { DraftStep, FearlessMode, GameDraft, SeriesFormat } from './draft'
 import { ROLES } from './types'
-import type { Champion, Player, ProMeta, Role, Tier } from './types'
+import type { Champion, Combo, Player, ProMeta, Role, Tier } from './types'
 
 export const TIER_VALUE: Record<Tier, number> = { S: 1, A: 0.75, B: 0.5, C: 0.3, P: 0.1 }
 
@@ -14,6 +14,20 @@ export interface CoachContext {
   champions: Champion[]
   /** Pro meta from gol.gg, when imported */
   pro?: ProMeta
+  /** Our practised combos (Jhin + Shen / Camille / Alistar…) */
+  combos?: Combo[]
+  /** Opponent of the series, to find the drafts prepared against them */
+  opponent?: string
+}
+
+/** Champions that form a practised combo with `champ`. */
+export function comboPartners(combos: Combo[] | undefined, champ: string): string[] {
+  const out = new Set<string>()
+  for (const c of combos ?? []) {
+    if (c.anchor === champ) c.partners.forEach(p => out.add(p))
+    if (c.partners.includes(champ)) out.add(c.anchor)
+  }
+  return [...out]
 }
 
 export interface Suggestion {
@@ -109,6 +123,13 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
       if (pro && pro.presence >= 0.2) {
         score += Math.min(pro.presence, 0.9) * 0.1
         reasons.push(`Pro: ${Math.round(pro.presence * 100)}% presence${pro.picks ? `, ${Math.round(pro.winRate * 100)}% WR` : ''}`)
+      }
+
+      // Practised combo with one of our picks (bot lane duo, jungle-mid…): strong signal.
+      const comboWith = comboPartners(ctx.combos, entry.champId).filter(c => ourPicks.includes(c))
+      if (comboWith.length) {
+        score += 0.15
+        reasons.push(`Combo with ${comboWith.map(c => byId.get(c)?.name ?? c).join(', ')}`)
       }
 
       const flexRoles = rolesOf.get(entry.champId)
