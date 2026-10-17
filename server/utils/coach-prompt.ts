@@ -140,15 +140,13 @@ function preparedDraftsBlock(drafts: PreparedDraft[], opponent: string | undefin
     .filter(({ s, alts }) => s.side === side && s.type === type && alts.length)
     .map(({ s, alts }) => `${type === 'pick' ? `${side === 'blue' ? 'B' : 'R'}${s.slot + 1} ` : ''}${alts.map(nameOf).join('/')}`)
     .join(', ')
-  const lines = drafts.map((d) => {
-    const them = otherSide(d.ourSide)
-    return [
-      `- "${d.name}" (${d.color}, we ${d.ourSide}) from prep "${d.prepName}"${d.matchesOpponent ? ` against ${d.opponent}` : d.opponent ? ` (vs ${d.opponent})` : ''}`,
-      `  our bans: ${steps(d, d.ourSide, 'ban') || '-'}; their bans: ${steps(d, them, 'ban') || '-'}`,
-      `  our picks: ${steps(d, d.ourSide, 'pick') || '-'}; expected from them: ${steps(d, them, 'pick') || '-'}`,
-      d.notes ? `  notes: ${d.notes.replace(/\s+/g, ' ').slice(0, 300)}` : '',
-    ].filter(Boolean).join('\n')
-  })
+  // A prepared draft is only our side: our bans and our picks, in our side's pick order.
+  const lines = drafts.map(d => [
+    `- "${d.name}" (${d.color}, we ${d.ourSide}) from prep "${d.prepName}"${d.matchesOpponent ? ` against ${d.opponent}` : d.opponent ? ` (vs ${d.opponent})` : ''}`,
+    `  our bans: ${steps(d, d.ourSide, 'ban') || '-'}`,
+    `  our picks: ${steps(d, d.ourSide, 'pick') || '-'}`,
+    d.notes ? `  notes: ${d.notes.replace(/\s+/g, ' ').slice(0, 300)}` : '',
+  ].filter(Boolean).join('\n'))
   const header = drafts.some(d => d.matchesOpponent)
     ? `OUR PREPARED DRAFTS (first ones prepared against ${opponent}; "A/B" = main choice / backups):`
     : 'OUR PREPARED DRAFTS (none prepared against this opponent; "A/B" = main choice / backups):'

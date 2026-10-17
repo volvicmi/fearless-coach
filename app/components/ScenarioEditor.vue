@@ -19,18 +19,53 @@ const emit = defineEmits<{
   remove: []
 }>()
 
-/** Step being filled by click / Enter: the first empty one unless the user picked another. */
-const firstEmpty = () => props.scenario.slots.findIndex(s => !s.length)
-const selected = ref<number>(Math.max(0, firstEmpty()))
+/** Our 10 steps (bans + picks) for the side we play, in draft order. */
+const ourSteps = computed(() => DRAFT_ORDER.map((s, i) => ({ s, i })).filter(x => x.s.side === props.scenario.ourSide).map(x => x.i))
+const isOurs = (i: number) => DRAFT_ORDER[i]!.side === props.scenario.ourSide
 
-const stepsOf = (side: Side, type: 'ban' | 'pick') =>
-  DRAFT_ORDER.map((s, i) => ({ ...s, i })).filter(s => s.side === side && s.type === type)
+/** Step being filled by click / Enter: our first empty one unless the user picked another. */
+const firstEmpty = () => ourSteps.value.find(i => !props.scenario.slots[i]!.length) ?? -1
+const selected = ref<number>(firstEmpty() >= 0 ? firstEmpty() : ourSteps.value[0]!)
 
 const label = (i: number) => {
   const s = DRAFT_ORDER[i]!
   return s.type === 'ban' ? `Ban ${s.slot + 1}` : `${s.side === 'blue' ? 'B' : 'R'}${s.slot + 1}`
 }
-const who = (side: Side) => (side === props.scenario.ourSide ? 'Us' : 'Them')
+
+/** The four phases of a tournament draft; the other team's turns are shown as markers between ours. */
+const PHASES = [
+  { label: 'Ban phase 1', from: 0, to: 5 },
+  { label: 'Pick phase 1', from: 6, to: 11 },
+  { label: 'Ban phase 2', from: 12, to: 15 },
+  { label: 'Pick phase 2', from: 16, to: 19 },
+]
+type PhaseItem = { kind: 'ours', i: number } | { kind: 'theirs', labels: string[] }
+const phases = computed(() => PHASES.map((p) => {
+  const items: PhaseItem[] = []
+  for (let i = p.from; i <= p.to; i++) {
+    if (isOurs(i)) {
+      items.push({ kind: 'ours', i })
+      continue
+    }
+    const last = items.at(-1)
+    if (last?.kind === 'theirs') last.labels.push(label(i))
+    else items.push({ kind: 'theirs', labels: [label(i)] })
+  }
+  return { label: p.label, isBan: DRAFT_ORDER[p.from]!.type === 'ban', items }
+}))
+
+/** Changing side keeps our draft: our Pick 1 stays our Pick 1, in the other side's order. */
+function switchSide(to: Side) {
+  if (to === props.scenario.ourSide) return
+  const slots: string[][] = DRAFT_ORDER.map(() => [])
+  DRAFT_ORDER.forEach((s, i) => {
+    if (s.side !== props.scenario.ourSide) return
+    const j = DRAFT_ORDER.findIndex(t => t.side === to && t.type === s.type && t.slot === s.slot)
+    slots[j] = [...props.scenario.slots[i]!]
+  })
+  emit('update', { ourSide: to, slots })
+  nextTick(() => (selected.value = firstEmpty() >= 0 ? firstEmpty() : ourSteps.value[0]!))
+}
 
 function setSlots(fn: (slots: string[][]) => void) {
   const slots = props.scenario.slots.map(s => [...s])
@@ -118,7 +153,7 @@ watch(notes, (text) => {
           type="button"
           class="cursor-pointer rounded-md px-3 py-1 capitalize"
           :class="scenario.ourSide === s ? (s === 'blue' ? 'bg-side-blue' : 'bg-side-red') : 'bg-zinc-900 text-zinc-400 hover:text-zinc-100'"
-          @click="emit('update', { ourSide: s })"
+          @click="switchSide(s)"
         >
           {{ s }}
         </button>
@@ -133,99 +168,84 @@ watch(notes, (text) => {
       </div>
     </div>
 
-    <!-- Board: blue | champion list | red -->
-    <div class="grid items-start gap-4 xl:grid-cols-[300px_minmax(0,1fr)_300px]">
-      <section
-        v-for="side in (['blue', 'red'] as const)"
-        :key="side"
-        class="flex flex-col gap-3"
-        :class="side === 'red' && 'xl:order-3'"
-      >
-        <h3 class="text-sm font-semibold uppercase tracking-wider" :class="side === 'blue' ? 'text-side-blue' : 'text-side-red'">
-          {{ side }} side <span class="normal-case text-zinc-400">· {{ who(side) }}</span>
-        </h3>
-
-        <!-- Bans -->
-        <div class="flex flex-col gap-1">
-          <div
-            v-for="s in stepsOf(side, 'ban')"
-            :key="s.i"
-            :data-tier-drop="String(s.i)"
-            class="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-2 py-1 transition-colors"
-            :class="selected === s.i ? 'border-amber-400 bg-amber-400/5' : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700'"
-            @click="selected = s.i"
-          >
-            <span class="w-11 shrink-0 text-[10px] text-zinc-500">{{ label(s.i) }} <span class="text-zinc-700">#{{ s.i + 1 }}</span></span>
-            <div data-tier-items class="flex flex-wrap items-center gap-1">
-              <span v-if="!scenario.slots[s.i]!.length" class="text-[11px] text-zinc-600">—</span>
-              <div v-for="(c, n) in scenario.slots[s.i]" :key="c" class="group relative">
-                <div :data-drag-champ="c" :data-drag-from="String(s.i)" class="cursor-grab touch-none" :title="`${nameOf(c)} · drag to move, reorder or remove`">
-                  <img :src="iconUrl(c)" :alt="nameOf(c)" draggable="false" class="rounded grayscale" :class="n === 0 ? 'size-8' : 'size-6 opacity-70'">
-                </div>
-                <button
-                  type="button"
-                  class="absolute -right-1 -top-1 hidden size-4 cursor-pointer place-items-center rounded-full bg-zinc-950 text-zinc-400 ring-1 ring-zinc-700 hover:bg-red-600 hover:text-white group-hover:grid"
-                  :title="`Remove ${nameOf(c)}`"
-                  @click.stop="removeFrom(s.i, c)"
-                >
-                  <svg viewBox="0 0 12 12" class="size-2" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
-                </button>
-              </div>
+    <!-- Board: our draft in tournament order | champion list -->
+    <div class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <section class="flex flex-col gap-4">
+        <div v-for="phase in phases" :key="phase.label" class="flex flex-col gap-1.5">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            {{ phase.label }}
+          </h3>
+          <template v-for="(item, k) in phase.items" :key="k">
+            <!-- The other team's turn: only a marker, we don't plan their draft -->
+            <div v-if="item.kind === 'theirs'" class="flex items-center gap-2 pl-2 text-[11px] text-zinc-600">
+              <span class="h-px w-6 bg-zinc-800" />
+              Their turn: {{ item.labels.join(' · ') }}
+              <span class="h-px flex-1 bg-zinc-800" />
             </div>
-          </div>
-        </div>
 
-        <!-- Picks -->
-        <div class="flex flex-col gap-1.5">
-          <div
-            v-for="s in stepsOf(side, 'pick')"
-            :key="s.i"
-            :data-tier-drop="String(s.i)"
-            class="flex min-h-16 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors"
-            :class="selected === s.i ? 'border-amber-400 bg-amber-400/5' : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700'"
-            @click="selected = s.i"
-          >
-            <span class="flex w-11 shrink-0 flex-col text-xs font-semibold" :class="side === 'blue' ? 'text-side-blue' : 'text-side-red'">
-              {{ label(s.i) }}
-              <span class="text-[10px] font-normal text-zinc-600">#{{ s.i + 1 }}</span>
-            </span>
-            <div data-tier-items class="flex flex-wrap items-center gap-1.5">
-              <span v-if="!scenario.slots[s.i]!.length" class="text-xs text-zinc-600">Drop or click a champion</span>
-              <div v-for="(c, n) in scenario.slots[s.i]" :key="c" class="group relative">
-                <div
-                  :data-drag-champ="c"
-                  :data-drag-from="String(s.i)"
-                  class="flex cursor-grab touch-none flex-col items-center"
-                  :title="`${nameOf(c)}${n === 0 ? ' · main choice' : ` · option ${n + 1}`} · drag to reorder, move or remove`"
-                >
-                  <img
-                    :src="iconUrl(c)"
-                    :alt="nameOf(c)"
-                    draggable="false"
-                    class="rounded-md"
-                    :class="n === 0 ? ['size-12', side === 'blue' ? 'ring-2 ring-side-blue' : 'ring-2 ring-side-red'] : 'size-9 opacity-75'"
+            <!-- One of our steps -->
+            <div
+              v-else
+              :data-tier-drop="String(item.i)"
+              class="flex cursor-pointer items-center gap-3 rounded-lg border px-3 transition-colors"
+              :class="[
+                phase.isBan ? 'min-h-12 py-1' : 'min-h-[4.5rem] py-1.5',
+                selected === item.i ? 'border-amber-400 bg-amber-400/5' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700',
+              ]"
+              @click="selected = item.i"
+            >
+              <span
+                class="flex w-14 shrink-0 flex-col text-xs font-semibold"
+                :class="phase.isBan ? 'text-zinc-400' : scenario.ourSide === 'blue' ? 'text-side-blue' : 'text-side-red'"
+              >
+                {{ label(item.i) }}
+                <span class="text-[10px] font-normal text-zinc-600">step {{ item.i + 1 }}</span>
+              </span>
+              <div data-tier-items class="flex flex-wrap items-center gap-1.5">
+                <span v-if="!scenario.slots[item.i]!.length" class="text-xs text-zinc-600">
+                  {{ phase.isBan ? 'Drop or click a ban' : 'Drop or click a champion' }}
+                </span>
+                <div v-for="(c, n) in scenario.slots[item.i]" :key="c" class="group relative">
+                  <div
+                    :data-drag-champ="c"
+                    :data-drag-from="String(item.i)"
+                    class="flex cursor-grab touch-none flex-col items-center"
+                    :title="`${nameOf(c)}${n === 0 ? ' · main choice' : ` · option ${n + 1}`} · drag to reorder, move or remove`"
                   >
-                  <span v-if="n === 0" class="mt-0.5 max-w-12 truncate text-[10px] text-zinc-300">{{ nameOf(c) }}</span>
+                    <img
+                      :src="iconUrl(c)"
+                      :alt="nameOf(c)"
+                      draggable="false"
+                      class="rounded-md"
+                      :class="[
+                        phase.isBan && 'grayscale',
+                        n === 0
+                          ? [phase.isBan ? 'size-9' : 'size-12', !phase.isBan && (scenario.ourSide === 'blue' ? 'ring-2 ring-side-blue' : 'ring-2 ring-side-red')]
+                          : [phase.isBan ? 'size-7' : 'size-9', 'opacity-75'],
+                      ]"
+                    >
+                    <span v-if="n === 0 && !phase.isBan" class="mt-0.5 max-w-12 truncate text-[10px] text-zinc-300">{{ nameOf(c) }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="absolute -right-1 -top-1 hidden size-5 cursor-pointer place-items-center rounded-full bg-zinc-950 text-zinc-400 shadow ring-1 ring-zinc-700 hover:bg-red-600 hover:text-white group-hover:grid"
+                    :title="`Remove ${nameOf(c)}`"
+                    @click.stop="removeFrom(item.i, c)"
+                  >
+                    <svg viewBox="0 0 12 12" class="size-2.5" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  class="absolute -right-1 -top-1 hidden size-5 cursor-pointer place-items-center rounded-full bg-zinc-950 text-zinc-400 shadow ring-1 ring-zinc-700 hover:bg-red-600 hover:text-white group-hover:grid"
-                  :title="`Remove ${nameOf(c)}`"
-                  @click.stop="removeFrom(s.i, c)"
-                >
-                  <svg viewBox="0 0 12 12" class="size-2.5" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
-                </button>
               </div>
             </div>
-          </div>
+          </template>
         </div>
       </section>
 
       <!-- Champion list: drag source, and drop back here to remove -->
-      <aside data-tier-drop="remove" class="flex flex-col gap-2 rounded-lg border border-zinc-800 p-3 xl:order-2 xl:h-[720px]">
+      <aside data-tier-drop="remove" class="flex flex-col gap-2 rounded-lg border border-zinc-800 p-3 xl:sticky xl:top-4 xl:h-[720px]">
         <p class="text-xs text-zinc-400">
           Filling <span class="font-semibold text-amber-300">{{ label(selected) }}</span>
-          <span class="text-zinc-600">(step #{{ selected + 1 }})</span> · click or Enter adds there · drag anywhere on the board
+          <span class="text-zinc-600">(step {{ selected + 1 }})</span> · click or Enter adds there · drag anywhere on the draft
         </p>
         <ChampionGrid
           class="min-h-96 flex-1"
