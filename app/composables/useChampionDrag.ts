@@ -1,10 +1,9 @@
 import { gsap } from 'gsap'
 import { Draggable } from 'gsap/Draggable'
 import type { Ref } from 'vue'
-import type { Tier } from '#shared/types'
 
-/** A tier row, or the champion list (drop there to take a champion out of the pool). */
-export type DropTarget = Tier | 'remove'
+/** A drop zone id: a tier ('S'…'P'), a prep slot ('0'…'19'), or 'remove' (drop back on the champion list). */
+export type DropTarget = string
 
 const DRAG_THRESHOLD_PX = 5
 /** Every zone while a drag is running */
@@ -21,7 +20,7 @@ const ZONE_HOVER = ['outline-2!', 'outline-solid!', 'outline-amber-400!', 'bg-am
  */
 export function useChampionDrag(
   root: Ref<HTMLElement | undefined>,
-  onDrop: (champId: string, target: DropTarget, index?: number) => void,
+  onDrop: (champId: string, target: DropTarget, index?: number, from?: string) => void,
 ) {
   let press: { x: number, y: number, el: HTMLElement } | null = null
   let hovered: HTMLElement | null = null
@@ -86,7 +85,7 @@ export function useChampionDrag(
 
   function startDrag(source: HTMLElement, e: PointerEvent) {
     const champId = source.dataset.dragChamp!
-    const from = source.dataset.dragFrom as Tier | undefined
+    const from = source.dataset.dragFrom
     const icon = source.querySelector('img') ?? source
     const rect = icon.getBoundingClientRect()
     const size = Math.max(rect.width, 56)
@@ -173,7 +172,7 @@ export function useChampionDrag(
     const [draggable] = Draggable.create(ghost, {
       type: 'x,y',
       onRelease() {
-        const target = hovered?.dataset.tierDrop as DropTarget | undefined
+        const target = hovered?.dataset.tierDrop
         const dropIndex = index
         finish()
         this.kill()
@@ -183,7 +182,7 @@ export function useChampionDrag(
         if (useful) {
           // The row updates instantly: the copy just fades where it was dropped.
           gsap.to(ghost, { scale: 0.5, opacity: 0, rotate: 0, duration: 0.18, ease: 'power2.in', onComplete: () => ghost.remove() })
-          onDrop(champId, target, target === 'remove' ? undefined : dropIndex)
+          onDrop(champId, target, target === 'remove' ? undefined : dropIndex, from)
         }
         else {
           // Dropped nowhere useful: fly back to where it came from.

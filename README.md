@@ -28,6 +28,10 @@ to `.env`, set each player's Riot ID (`Name#TAG`) in the Team tab and click **Sy
 Pro data comes from gol.gg (Pro tab): champion stats and the real drafts of each tournament, imported at one
 page per second and cached. Coach notes (Notes tab) are free markdown sent to the AI with every request.
 
+Draft prep (Prep tab): preps per opponent, several drafts each, several options per step (first = main
+choice), drag and drop like the tier lists. Win chance in reviews starts from a data estimate (pro win rates,
+our players' comfort, damage mix) shown factor by factor; the AI may move it by 10 points at most.
+
 ## What works today
 
 - **Series**: Bo1/Bo3/Bo5, Fearless (a champion picked in an earlier game is locked for both teams) or normal draft.

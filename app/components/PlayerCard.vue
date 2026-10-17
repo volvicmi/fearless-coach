@@ -37,7 +37,7 @@ const tab = ref<'champions' | 'ranked'>('champions')
 
 const card = ref<HTMLElement>()
 useChampionDrag(card, (champId: string, target: DropTarget, index?: number) =>
-  target === 'remove' ? removeChamp(champId) : setTier(champId, target, index))
+  target === 'remove' ? removeChamp(champId) : setTier(champId, target as Tier, index))
 
 async function updatePlayer(body: Partial<Pick<Player, 'name' | 'role' | 'riotId'>>) {
   await $fetch(`/api/players/${props.player.id}`, { method: 'PUT', body })

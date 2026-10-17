@@ -26,7 +26,7 @@ export async function askCoach(ctx: CoachContext): Promise<CoachResult> {
   const started = Date.now()
   if (prompt.mode === 'review') {
     const { raw, model } = await ask(prompt, ReviewSchema)
-    return finalizeReview(raw, model, started)
+    return finalizeReview(ctx, raw, model, started)
   }
   const { raw, model } = await ask(prompt, AdviceSchema)
   return finalizeAdvice(ctx, raw, model, started)

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { DRAFT_ORDER, NO_BAN, fearlessLocked, otherSide, picksOf, slotsOf } from '#shared/draft'
 import type { DraftStep, FearlessMode, SeriesFormat, Side } from '#shared/draft'
 import { assignRoles, stepLabel, suggestPicks, unavailableNow } from '#shared/coach'
+import { estimateWinRate } from '#shared/winrate'
 import type { CoachContext } from '#shared/coach'
 import type { CoachAdvice, CoachMode, CoachReview, Player, ProDraft, ProMeta } from '#shared/types'
 import { loadProDrafts, loadProMeta } from './pro'
@@ -75,7 +76,7 @@ PREDICTION (their turn): predict what the enemy will most likely pick or ban at 
 For ADVICE and PREDICTION: at most 3 options, most likely / best first, each reason under 25 words.
 
 REVIEW (draft complete): analyse both final compositions.
-- winRate: your estimate of each side's chance to win from the draft alone (comp strength, synergy, scaling, matchups), not player skill. Blue + red = 100. Be realistic: drafts rarely go beyond 60-40.
+- winRate: start from the DATA ESTIMATE of the request (computed from pro results, our players' comfort and damage mix), then move it by at most 10 points for what the data can't see: synergies, lane matchups, scaling, engage vs disengage, comp identity. Blue + red = 100. In the verdict, say how far you moved from the data estimate and why.
 - For each comp: archetype, 2-4 win conditions, power spikes, a game plan phase by phase, and 2-4 concrete ways the other team counters it.
 - verdict: who is favoured and why, and the single most important thing our team must do.
 
@@ -172,8 +173,9 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
     ? suggestPicks(ctx, 8).map(s => `${s.champId} -> ${s.player} (${s.role}, ${s.tier}), score ${s.score.toFixed(2)}: ${s.reasons.join('; ')}`)
     : []
 
+  const estimate = mode === 'review' ? estimateWinRate(ctx) : null
   const task = mode === 'review'
-    ? `TASK: REVIEW. We were ${us}, they were ${them}. Analyse both compositions.`
+    ? `DATA ESTIMATE: blue ${estimate!.blue}% / red ${100 - estimate!.blue}%\n${estimate!.factors.map(f => `- ${f.label} (${f.impact >= 0 ? '+' : ''}${f.impact} pts for blue): ${f.detail}`).join('\n') || '- no data factor'}\n\nTASK: REVIEW. We were ${us}, they were ${them}. Analyse both compositions.`
     : mode === 'advice'
       ? `TASK: ADVICE for ${stepLabel(step!, us)} (${step!.type === 'ban' ? 'choose a ban' : 'choose a pick'}).`
       : `TASK: PREDICTION for ${stepLabel(step!, us)} (${step!.side} side ${step!.type}): what will they ${step!.type}?`
@@ -223,16 +225,19 @@ export function finalizeAdvice(ctx: CoachContext, raw: RawAdvice, model: string,
   }
 }
 
-/** Win rates are re-normalised so blue + red = 100 whatever the model returned. */
-export function finalizeReview(raw: RawReview, model: string, started: number): CoachReview {
+/** Win rates are re-normalised so blue + red = 100, and kept within 10 points of the data estimate. */
+export function finalizeReview(ctx: CoachContext, raw: RawReview, model: string, started: number): CoachReview {
+  const data = estimateWinRate(ctx)
   const b = Math.max(0, raw.blue.winRate)
   const r = Math.max(0, raw.red.winRate)
-  const blueWr = b + r > 0 ? Math.round((b / (b + r)) * 100) : 50
+  const aiBlue = b + r > 0 ? Math.round((b / (b + r)) * 100) : data.blue
+  const blueWr = Math.min(data.blue + 10, Math.max(data.blue - 10, aiBlue))
   return {
     kind: 'review',
     blue: { ...raw.blue, winRate: blueWr },
     red: { ...raw.red, winRate: 100 - blueWr },
     verdict: raw.verdict,
+    data,
     model,
     ms: Date.now() - started,
   }

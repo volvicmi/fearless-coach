@@ -21,9 +21,16 @@ const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 
 const filtered = computed(() => {
   const q = normalize(search.value)
-  return props.champions.filter(c =>
+  const list = props.champions.filter(c =>
     (!q || normalize(c.name).includes(q) || normalize(c.id).includes(q))
     && (!tag.value || c.tags.includes(tag.value)))
+  if (!q) return list
+  // "vi" must give Vi before Anivia: exact name, then names starting with the query, then the rest.
+  const rank = (c: Champion) => {
+    const n = normalize(c.name)
+    return n === q || normalize(c.id) === q ? 0 : n.startsWith(q) ? 1 : 2
+  }
+  return [...list].sort((a, b) => rank(a) - rank(b))
 })
 
 function choose(id: string) {

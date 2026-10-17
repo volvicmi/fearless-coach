@@ -8,6 +8,9 @@
         <NuxtLink to="/" class="hover:text-zinc-100" exact-active-class="text-zinc-100">
           Draft
         </NuxtLink>
+        <NuxtLink to="/prep" class="hover:text-zinc-100" active-class="text-zinc-100">
+          Prep
+        </NuxtLink>
         <NuxtLink to="/team" class="hover:text-zinc-100" active-class="text-zinc-100">
           Team
         </NuxtLink>

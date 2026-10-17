@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { DRAFT_ORDER, otherSide, picksOf } from '#shared/draft'
 import { suggestPicks, unavailableNow } from '#shared/coach'
+import { estimateWinRate } from '#shared/winrate'
 import type { CoachContext } from '#shared/coach'
 import type { CoachMode, CoachResult } from '#shared/types'
 
@@ -98,6 +99,8 @@ const IDLE_HINT: Record<CoachMode, string> = {
 const CONFIDENCE: Record<string, string> = { high: 'text-emerald-400', medium: 'text-amber-300', low: 'text-zinc-400' }
 
 const us = computed(() => props.ctx.game.ourSide)
+/** Data-based win chance, computed locally as soon as the draft is complete. */
+const dataEstimate = computed(() => estimateWinRate(props.ctx))
 const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
 </script>
 
@@ -212,17 +215,17 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
         </p>
       </div>
 
-      <!-- Draft complete: review -->
+      <!-- Draft complete: data estimate (instant, free), then the AI review on demand -->
+      <WinRateBreakdown
+        v-if="mode === 'review'"
+        :estimate="review && fresh ? review.data : dataEstimate"
+        :ai-blue="review && fresh ? review.blue.winRate : undefined"
+        :our-side="us"
+      />
       <div v-if="review" class="flex flex-col gap-3" :class="!fresh && 'opacity-40'">
-        <div>
-          <div class="flex h-2 overflow-hidden rounded-full">
-            <div class="bg-side-blue" :style="{ width: `${review.blue.winRate}%` }" />
-            <div class="bg-side-red" :style="{ width: `${review.red.winRate}%` }" />
-          </div>
-          <p class="mt-1 text-[11px] text-zinc-500">
-            Estimated by the AI from the draft only (not player skill) · {{ review.model }} · {{ (review.ms / 1000).toFixed(1) }}s
-          </p>
-        </div>
+        <p class="text-[11px] text-zinc-500">
+          AI review · {{ review.model }} · {{ (review.ms / 1000).toFixed(1) }}s
+        </p>
         <p class="text-xs">
           <span class="font-semibold text-emerald-400">Verdict:</span> {{ review.verdict }}
         </p>

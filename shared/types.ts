@@ -70,6 +70,8 @@ export interface CoachReview {
   blue: CompReview
   red: CompReview
   verdict: string
+  /** The data-based estimate the AI started from (blue %, factors) */
+  data: { blue: number, factors: { label: string, detail: string, impact: number }[] }
   model: string
   ms: number
 }
@@ -128,6 +130,35 @@ export interface Player {
   pool: PoolEntry[]
   /** null until the first Riot sync */
   soloq: SoloqSummary | null
+}
+
+export const SCENARIO_COLORS = ['amber', 'sky', 'emerald', 'rose', 'violet', 'zinc'] as const
+export type ScenarioColor = typeof SCENARIO_COLORS[number]
+
+/** A draft prepared in advance; every step can hold several alternatives (first = main choice). */
+export interface PrepScenario {
+  id: number
+  prepId: number
+  name: string
+  color: ScenarioColor
+  ourSide: 'blue' | 'red'
+  /** 20 entries, one per DRAFT_ORDER step */
+  slots: string[][]
+  notes: string
+  position: number
+}
+
+export interface Prep {
+  id: number
+  name: string
+  opponent: string
+  createdAt: string
+  scenarioCount?: number
+}
+
+export interface PrepDetail {
+  prep: Prep
+  scenarios: PrepScenario[]
 }
 
 export interface ProChampStat {

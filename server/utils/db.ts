@@ -44,6 +44,25 @@ export function useDb(): DatabaseSync {
     -- 'soft' Fearless was dropped: there is only one Fearless rule.
     UPDATE series SET fearless = 'hard' WHERE fearless = 'soft';
 
+    -- Draft prep: a prep (e.g. "vs Team X") holds scenario boards prepared in advance.
+    CREATE TABLE IF NOT EXISTS preps (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT NOT NULL,
+      opponent   TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS prep_scenarios (
+      id       INTEGER PRIMARY KEY AUTOINCREMENT,
+      prep_id  INTEGER NOT NULL REFERENCES preps(id) ON DELETE CASCADE,
+      name     TEXT NOT NULL,
+      color    TEXT NOT NULL DEFAULT 'amber',
+      our_side TEXT NOT NULL CHECK (our_side IN ('blue','red')),
+      -- JSON array of 20 arrays (DRAFT_ORDER steps): the alternatives for each step, first = main choice
+      slots    TEXT NOT NULL,
+      notes    TEXT NOT NULL DEFAULT '',
+      position INTEGER NOT NULL DEFAULT 0
+    );
+
     -- Free-form values such as the coach notes.
     CREATE TABLE IF NOT EXISTS settings (
       key   TEXT PRIMARY KEY,
