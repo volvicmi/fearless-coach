@@ -37,20 +37,29 @@ const tab = ref<'champions' | 'ranked'>('champions')
 const clickTier = ref<Tier>('A')
 
 const card = ref<HTMLElement>()
-useChampionDrag(card, (champId: string, target: DropTarget) =>
-  target === 'remove' ? removeChamp(champId) : setTier(champId, target))
+useChampionDrag(card, (champId: string, target: DropTarget, index?: number) =>
+  target === 'remove' ? removeChamp(champId) : setTier(champId, target, index))
 
 async function updatePlayer(body: Partial<Pick<Player, 'name' | 'role' | 'riotId'>>) {
   await $fetch(`/api/players/${props.player.id}`, { method: 'PUT', body })
   emit('changed')
 }
 
-async function setTier(champId: string, tier: Tier) {
+/** Puts a champion in `tier` at `index` (0 = leftmost = strongest), or at the end of the tier. */
+async function setTier(champId: string, tier: Tier, index?: number) {
   const existing = pool.value.find(e => e.champId === champId)
-  pool.value = existing
-    ? pool.value.map(e => (e.champId === champId ? { ...e, tier } : e))
-    : [...pool.value, { champId, tier, note: '' }]
-  await $fetch(`/api/players/${props.player.id}/pool/${champId}`, { method: 'PUT', body: { tier } })
+  const entry: PoolEntry = { champId, tier, note: existing?.note ?? '' }
+  const rest = pool.value.filter(e => e.champId !== champId)
+  const sameTier = rest.filter(e => e.tier === tier)
+  const at = Math.min(index ?? sameTier.length, sameTier.length)
+  // Insert right before the champion currently at that place (or after the tier's last one).
+  const anchor = sameTier[at]
+  const insertAt = anchor
+    ? rest.indexOf(anchor)
+    : sameTier.length ? rest.indexOf(sameTier[sameTier.length - 1]!) + 1 : rest.length
+  pool.value = [...rest.slice(0, insertAt), entry, ...rest.slice(insertAt)]
+
+  await $fetch(`/api/players/${props.player.id}/pool/${champId}`, { method: 'PUT', body: { tier, index } })
   emit('changed')
 }
 
@@ -113,7 +122,7 @@ async function removePlayer() {
             </span>
             <span class="text-[10px] font-semibold uppercase tracking-wide opacity-80">{{ TIER_CAPTION[group.tier] }}</span>
           </div>
-          <div class="flex flex-1 flex-wrap content-start items-start gap-2 p-2">
+          <div data-tier-items class="flex flex-1 flex-wrap content-start items-start gap-2 p-2">
             <span v-if="!group.entries.length" class="self-center px-2 text-xs text-zinc-600">
               {{ group.tier === 'P' ? 'Drop the champions this player is training' : 'Drop champions here' }}
             </span>
@@ -122,7 +131,7 @@ async function removePlayer() {
                 :data-drag-champ="e.champId"
                 :data-drag-from="e.tier"
                 class="flex cursor-grab touch-none flex-col items-center gap-0.5 rounded-md p-1 hover:bg-zinc-800 active:cursor-grabbing"
-                :title="`${nameOf(e.champId)} · drag to another row, or onto the champion list to remove`"
+                :title="`${nameOf(e.champId)} · drag to reorder (left = strongest), move to another row, or drop on the champion list to remove`"
               >
                 <img :src="iconUrl(e.champId)" :alt="nameOf(e.champId)" draggable="false" class="size-14 select-none rounded-md">
                 <span class="w-full truncate text-center text-[10px] text-zinc-400">{{ nameOf(e.champId) }}</span>

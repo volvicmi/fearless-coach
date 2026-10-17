@@ -87,8 +87,10 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
       // Practice champions aren't ready for official games.
       if (entry.tier === 'P' || blocked.has(entry.champId)) continue
       const champ = byId.get(entry.champId)
-      let score = TIER_VALUE[entry.tier]
-      const reasons = [`${entry.tier} tier for ${player.name}`]
+      // Inside a tier, the leftmost champion is the player's strongest: small edge, never enough to jump a tier.
+      const rankInTier = player.pool.filter(e => e.tier === entry.tier).indexOf(entry)
+      let score = TIER_VALUE[entry.tier] - Math.min(rankInTier, 5) * 0.01
+      const reasons = [`${entry.tier} tier for ${player.name}${rankInTier === 0 ? ' (top of the tier)' : ''}`]
 
       // Ranked form: only trusted from 5 games, capped so it adjusts the tier instead of replacing it.
       const ranked = player.soloq?.champions.find(c => c.champId === entry.champId)

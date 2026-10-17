@@ -104,7 +104,7 @@ function teamBlock(team: Player[], nameOf: (id: string) => string): string {
       .join(', ')
     return `- ${p.name} (${p.role}): pool ${pool}${ranked ? `\n  ranked games (last ${p.soloq!.games}): ${ranked}` : ''}`
   })
-  return `OUR TEAM POOLS (tier S = most comfortable) and recent ranked stats (SoloQ/Flex, small samples are noisy):\n${lines.join('\n')}`
+  return `OUR TEAM POOLS (tier S = most comfortable; listed strongest first, also inside each tier) and recent ranked stats (SoloQ/Flex, small samples are noisy):\n${lines.join('\n')}`
 }
 
 export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {

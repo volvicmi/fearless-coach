@@ -73,8 +73,13 @@ export function useDb(): DatabaseSync {
   addColumn(db, 'players', 'puuid', "TEXT NOT NULL DEFAULT ''")
   addColumn(db, 'players', 'soloq_synced_at', 'TEXT')
   allowPracticeTier(db)
+  // Order inside a tier: 0 = leftmost = strongest of the tier.
+  addColumn(db, 'pool_entries', 'position', 'INTEGER NOT NULL DEFAULT 0')
   return db
 }
+
+/** S → A → B → C → Practice, then the order chosen inside each tier. */
+export const POOL_ORDER_SQL = `CASE tier WHEN 'S' THEN 0 WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 ELSE 4 END, position, champ_id`
 
 /** Databases created before the Practice tier have a CHECK without 'P': SQLite can't alter it, so rebuild the table. */
 function allowPracticeTier(db: DatabaseSync) {
@@ -118,7 +123,7 @@ export function toSeries(row: any): Series {
 export function loadTeam(): Player[] {
   const db = useDb()
   const players = db.prepare('SELECT * FROM players').all() as any[]
-  const entries = db.prepare('SELECT * FROM pool_entries ORDER BY tier, champ_id').all() as any[]
+  const entries = db.prepare(`SELECT * FROM pool_entries ORDER BY ${POOL_ORDER_SQL}`).all() as any[]
   const pools = new Map<number, PoolEntry[]>()
   for (const e of entries) {
     const list = pools.get(e.player_id) ?? []
