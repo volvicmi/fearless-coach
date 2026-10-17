@@ -2,6 +2,7 @@ import { DRAFT_ORDER, MAX_GAMES, NO_BAN, fearlessLocked, picksOf } from './draft
 import type { DraftStep, FearlessMode, GameDraft, SeriesFormat } from './draft'
 import { ROLES } from './types'
 import type { Champion, Combo, Player, ProMeta, Role, Tier } from './types'
+import { CHAMPION_ROLES } from './champion-roles'
 
 export const TIER_VALUE: Record<Tier, number> = { S: 1, A: 0.75, B: 0.5, C: 0.3, P: 0.1 }
 
@@ -64,6 +65,25 @@ export function assignRoles(picks: string[], team: Player[]): Map<string, Role> 
     }
   }
   return assigned
+}
+
+/**
+ * Roles the other team still has to fill, from its picks and the usual role of each champion.
+ * Each pick takes its first free role; a champion missing from CHAMPION_ROLES closes none.
+ */
+export function freeRolesOf(picks: string[]): Role[] {
+  const taken = new Set<Role>()
+  for (const champ of picks) {
+    const role = CHAMPION_ROLES[champ]?.find(r => !taken.has(r))
+    if (role) taken.add(role)
+  }
+  return ROLES.filter(r => !taken.has(r))
+}
+
+/** Can this champion be played in one of these roles (unknown champions are not filtered out)? */
+export function canFillAnyRole(champ: string, roles: Role[]): boolean {
+  const known = CHAMPION_ROLES[champ]
+  return !known || known.some(r => roles.includes(r))
 }
 
 const isMage = (c?: Champion) => !!c?.tags.includes('Mage')

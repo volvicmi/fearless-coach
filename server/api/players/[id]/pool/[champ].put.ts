@@ -3,12 +3,14 @@ import { TIERS } from '#shared/types'
 /**
  * Adds a champion to a player's pool, or moves it: `{ tier, index?, note? }`.
  * `index` is its place inside the tier (0 = leftmost = strongest); without it the champion goes last.
+ * `{ train }` alone toggles the "to train first" flag and leaves the tier and the position alone.
  */
 export default defineEventHandler(async (event) => {
   const playerId = Number(getRouterParam(event, 'id'))
   const champId = getRouterParam(event, 'champ')!
   const body = await readBody(event) ?? {}
-  if (!TIERS.includes(body.tier)) throw createError({ statusCode: 400, statusMessage: 'Tier invalide' })
+  const trainOnly = body.tier === undefined && typeof body.train === 'boolean'
+  if (!trainOnly && !TIERS.includes(body.tier)) throw createError({ statusCode: 400, statusMessage: 'Tier invalide' })
   if (body.index !== undefined && !(Number.isInteger(body.index) && body.index >= 0)) {
     throw createError({ statusCode: 400, statusMessage: 'Position invalide' })
   }
@@ -17,6 +19,10 @@ export default defineEventHandler(async (event) => {
   if (!champions.some(c => c.id === champId)) throw createError({ statusCode: 400, statusMessage: 'Champion inconnu' })
 
   const db = useDb()
+  if (trainOnly) {
+    db.prepare('UPDATE pool_entries SET train = ? WHERE player_id = ? AND champ_id = ?').run(body.train ? 1 : 0, playerId, champId)
+    return { ok: true }
+  }
   db.exec('BEGIN')
   try {
     db.prepare(`

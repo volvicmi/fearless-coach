@@ -15,22 +15,22 @@ const emit = defineEmits<{ changed: [] }>()
 const pool = ref<PoolEntry[]>([...props.player.pool])
 watch(() => props.player.pool, p => (pool.value = [...p]))
 
-const byTier = computed(() => TIERS.map(tier => ({ tier, entries: pool.value.filter(e => e.tier === tier) })))
-const inPool = computed(() => new Map(pool.value.map(e => [e.champId, `Déjà ${e.tier === 'P' ? 'en Entraînement' : `en tier ${e.tier}`}`])))
+/** The tier rows shown. The old practice tier (P) is hidden: its rows stay in the database. */
+const ROWS = TIERS.filter((t): t is Exclude<Tier, 'P'> => t !== 'P')
+const byTier = computed(() => ROWS.map(tier => ({ tier, entries: pool.value.filter(e => e.tier === tier) })))
+const inPool = computed(() => new Map(pool.value.filter(e => e.tier !== 'P').map(e => [e.champId, `Déjà en tier ${e.tier}`])))
 
-const TIER_STYLE: Record<Tier, string> = {
+const TIER_STYLE: Record<Exclude<Tier, 'P'>, string> = {
   S: 'bg-amber-400 text-zinc-950',
   A: 'bg-emerald-500 text-zinc-950',
   B: 'bg-sky-500 text-zinc-950',
   C: 'bg-zinc-500 text-zinc-950',
-  P: 'bg-violet-500 text-zinc-950',
 }
-const TIER_CAPTION: Record<Tier, string> = {
+const TIER_CAPTION: Record<Exclude<Tier, 'P'>, string> = {
   S: 'Confort max',
   A: 'Confortable',
   B: 'Jouable',
   C: 'Pocket',
-  P: 'Entraînement',
 }
 
 const tab = ref<'champions' | 'ranked'>('champions')
@@ -47,7 +47,7 @@ async function updatePlayer(body: Partial<Pick<Player, 'name' | 'role' | 'riotId
 /** Puts a champion in `tier` at `index` (0 = leftmost = strongest), or at the end of the tier. */
 async function setTier(champId: string, tier: Tier, index?: number) {
   const existing = pool.value.find(e => e.champId === champId)
-  const entry: PoolEntry = { champId, tier, note: existing?.note ?? '' }
+  const entry: PoolEntry = { champId, tier, note: existing?.note ?? '', train: existing?.train ?? false }
   const rest = pool.value.filter(e => e.champId !== champId)
   const sameTier = rest.filter(e => e.tier === tier)
   const at = Math.min(index ?? sameTier.length, sameTier.length)
@@ -59,6 +59,14 @@ async function setTier(champId: string, tier: Tier, index?: number) {
   pool.value = [...rest.slice(0, insertAt), entry, ...rest.slice(insertAt)]
 
   await $fetch(`/api/players/${props.player.id}/pool/${champId}`, { method: 'PUT', body: { tier, index } })
+  emit('changed')
+}
+
+/** Marks or unmarks a champion as "to train first". Optimistic, like the drops. */
+async function toggleTrain(e: PoolEntry) {
+  const train = !e.train
+  pool.value = pool.value.map(p => (p.champId === e.champId ? { ...p, train } : p))
+  await $fetch(`/api/players/${props.player.id}/pool/${e.champId}`, { method: 'PUT', body: { train } })
   emit('changed')
 }
 
@@ -125,18 +133,13 @@ async function removePlayer() {
           :key="group.tier"
           :data-tier-drop="group.tier"
           class="flex min-h-[88px] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40 transition-colors"
-          :class="group.tier === 'P' && 'mt-3'"
         >
           <div class="flex w-20 shrink-0 flex-col items-center justify-center gap-0.5" :class="TIER_STYLE[group.tier]">
-            <span class="font-black leading-none" :class="group.tier === 'P' ? 'text-lg' : 'text-3xl'">
-              {{ group.tier === 'P' ? '⟳' : group.tier }}
-            </span>
+            <span class="text-3xl font-black leading-none">{{ group.tier }}</span>
             <span class="text-[10px] font-semibold uppercase tracking-wide opacity-80">{{ TIER_CAPTION[group.tier] }}</span>
           </div>
           <div data-tier-items class="flex flex-1 flex-wrap content-start items-start gap-2 p-2">
-            <span v-if="!group.entries.length" class="self-center px-2 text-xs text-zinc-600">
-              {{ group.tier === 'P' ? 'Dépose ici les champions que ce joueur travaille' : 'Dépose des champions ici' }}
-            </span>
+            <span v-if="!group.entries.length" class="self-center px-2 text-xs text-zinc-600">Dépose des champions ici</span>
             <div v-for="e in group.entries" :key="e.champId" class="group relative w-16">
               <div
                 :data-drag-champ="e.champId"
@@ -144,9 +147,31 @@ async function removePlayer() {
                 class="flex cursor-grab touch-none flex-col items-center gap-0.5 rounded-md p-1 hover:bg-zinc-800 active:cursor-grabbing"
                 :title="`${nameOf(e.champId)} · glisse pour réordonner (à gauche = le plus fort), change de ligne, ou dépose sur la liste des champions pour retirer`"
               >
-                <img :src="iconUrl(e.champId)" :alt="nameOf(e.champId)" draggable="false" class="size-14 select-none rounded-md">
+                <img
+                  :src="iconUrl(e.champId)"
+                  :alt="nameOf(e.champId)"
+                  draggable="false"
+                  class="size-14 select-none rounded-md"
+                  :class="e.train && 'ring-2 ring-fuchsia-400'"
+                >
                 <span class="w-full truncate text-center text-[10px] text-zinc-400">{{ nameOf(e.champId) }}</span>
               </div>
+              <!-- "Pick prioritaire à travailler": always visible when set, otherwise on hover -->
+              <button
+                type="button"
+                class="absolute -left-1 -top-1 size-5 cursor-pointer place-items-center rounded-full shadow ring-1 transition-colors"
+                :class="e.train
+                  ? 'grid bg-fuchsia-500 text-zinc-950 ring-fuchsia-300'
+                  : 'hidden bg-zinc-950 text-zinc-400 ring-zinc-700 hover:bg-fuchsia-500 hover:text-zinc-950 hover:ring-fuchsia-300 group-hover:grid'"
+                :title="e.train ? `${nameOf(e.champId)} : à travailler en priorité (clique pour retirer)` : `Marquer ${nameOf(e.champId)} comme à travailler en priorité`"
+                :aria-pressed="e.train"
+                @click="toggleTrain(e)"
+              >
+                <svg viewBox="0 0 12 12" class="size-2.5" aria-hidden="true">
+                  <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.6" />
+                  <circle cx="6" cy="6" r="1.4" fill="currentColor" />
+                </svg>
+              </button>
               <button
                 type="button"
                 class="absolute -right-1 -top-1 hidden size-5 cursor-pointer place-items-center rounded-full bg-zinc-950 text-zinc-400 shadow ring-1 ring-zinc-700 transition-colors hover:bg-red-600 hover:text-white hover:ring-red-500 group-hover:grid"

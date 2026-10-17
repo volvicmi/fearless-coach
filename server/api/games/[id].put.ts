@@ -14,6 +14,9 @@ export default defineEventHandler(async (event) => {
     const champs = body.actions.filter((a: string) => a !== NO_BAN)
     if (new Set(champs).size !== champs.length) throw createError({ statusCode: 400, statusMessage: 'Un champion apparaît deux fois dans la draft' })
     db.prepare('UPDATE games SET actions = ? WHERE id = ?').run(JSON.stringify(body.actions), id)
+    // Duel : si la draft change, l'ancien verdict ne vaut plus rien (le gagnant en découle).
+    const info = db.prepare('SELECT s.mode FROM games g JOIN series s ON s.id = g.series_id WHERE g.id = ?').get(id) as { mode: string } | undefined
+    if (info?.mode === 'duel') db.prepare('UPDATE games SET verdict = NULL, winner = NULL WHERE id = ?').run(id)
   }
   if (body.winner !== undefined) {
     if (![null, 'blue', 'red'].includes(body.winner)) throw createError({ statusCode: 400, statusMessage: 'Gagnant invalide' })

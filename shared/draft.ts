@@ -47,6 +47,28 @@ export interface GameDraft {
 
 export const otherSide = (side: Side): Side => (side === 'blue' ? 'red' : 'blue')
 
+/** Victoires nécessaires pour gagner la série (Bo3 → 2). */
+export const winsNeeded = (format: SeriesFormat) => Math.ceil(MAX_GAMES[format] / 2)
+
+/**
+ * Score d'une série vu du joueur A (`ourSide` de chaque game) et vainqueur si quelqu'un a atteint la majorité.
+ * Les games sans vainqueur ne comptent pas.
+ */
+export function seriesScore(
+  format: SeriesFormat,
+  games: { ourSide: Side, winner?: Side | null }[],
+): { a: number, b: number, winner: 'a' | 'b' | null } {
+  let a = 0
+  let b = 0
+  for (const g of games) {
+    if (!g.winner) continue
+    if (g.winner === g.ourSide) a++
+    else b++
+  }
+  const needed = winsNeeded(format)
+  return { a, b, winner: a >= needed ? 'a' : b >= needed ? 'b' : null }
+}
+
 /** The 5 ban or pick slots of one side, `null` where not played yet. */
 export function slotsOf(actions: string[], side: Side, type: ActionType): (string | null)[] {
   const slots: (string | null)[] = [null, null, null, null, null]

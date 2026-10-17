@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { MAX_GAMES, fearlessLocked, otherSide } from '#shared/draft'
+import { MAX_GAMES, otherSide } from '#shared/draft'
 import type { Side } from '#shared/draft'
 import type { CoachContext } from '#shared/coach'
-import type { Combo, Game, Player, ProMeta, SeriesDetail } from '#shared/types'
+import type { Combo, Player, ProMeta, SeriesDetail } from '#shared/types'
 
 const route = useRoute()
 const id = route.params.id as string
 
 const { data, refresh } = await useFetch<SeriesDetail>(`/api/series/${id}`)
 if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Série introuvable', fatal: true })
+// Un duel a sa propre page : pas de coach IA, un verdict à la fin.
+if (data.value.series.mode === 'duel') await navigateTo(`/duel/${id}`, { replace: true })
+const { patchGame } = useGameSave(data, refresh)
 
 const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (champ: string) => byId.value.get(champ)?.name ?? champ
@@ -33,17 +36,6 @@ const score = computed(() => {
   return { us, them }
 })
 
-/** Champions locked for both teams in the active game, grouped by the game that burned them. */
-const lockedByGame = computed(() => {
-  const g = game.value
-  if (!g) return []
-  const groups = new Map<number, string[]>()
-  for (const [champ, n] of fearlessLocked(series.value.fearless, data.value!.games, g)) {
-    groups.set(n, [...(groups.get(n) ?? []), champ])
-  }
-  return [...groups].map(([n, champs]) => ({ n, champs }))
-})
-
 const coachCtx = computed<CoachContext | undefined>(() => game.value && {
   game: game.value,
   games: data.value!.games,
@@ -55,19 +47,6 @@ const coachCtx = computed<CoachContext | undefined>(() => game.value && {
   combos: combos.value ?? [],
   opponent: series.value.opponent,
 })
-
-/** Saves run one after another so fast clicks + undo reach the server in the right order. */
-let saveQueue: Promise<unknown> = Promise.resolve()
-
-function patchGame(g: Game, body: Partial<Pick<Game, 'actions' | 'winner' | 'ourSide'>>) {
-  // Optimistic: the board must react instantly during a live draft.
-  // useFetch data is a shallowRef, so swap in a new object instead of mutating.
-  const next = { ...g, ...body }
-  data.value = { ...data.value!, games: data.value!.games.map(x => (x.id === g.id ? next : x)) }
-  saveQueue = saveQueue
-    .then(() => $fetch(`/api/games/${g.id}`, { method: 'PUT', body }))
-    .catch(() => refresh()) // server refused: resync with what is actually stored
-}
 
 async function nextGame() {
   // Default: the loser of the previous game usually picks side; start on the opposite side, editable below.
@@ -170,28 +149,7 @@ async function nextGame() {
         />
       </div>
 
-      <section v-if="series.fearless !== 'off'" class="rounded-lg border border-zinc-800 p-3">
-        <h3 class="mb-2 text-sm font-semibold">
-          Bloqués par le Fearless
-          <span class="font-normal text-zinc-500">· les deux équipes ({{ lockedByGame.reduce((n, g) => n + g.champs.length, 0) }})</span>
-        </h3>
-        <p v-if="!lockedByGame.length" class="text-xs text-zinc-500">
-          Rien de bloqué pour l’instant : les picks de cette game seront bloqués dès la suivante.
-        </p>
-        <div v-for="group in lockedByGame" :key="group.n" class="flex items-center gap-2 py-0.5">
-          <span class="w-7 text-xs text-zinc-500">G{{ group.n }}</span>
-          <div class="flex flex-wrap gap-1">
-            <img
-              v-for="champ in group.champs"
-              :key="champ"
-              :src="iconUrl(champ)"
-              :alt="nameOf(champ)"
-              :title="nameOf(champ)"
-              class="size-8 rounded grayscale"
-            >
-          </div>
-        </div>
-      </section>
+      <FearlessLocks :fearless="series.fearless" :games="data.games" :game="game" :icon-url="iconUrl" :name-of="nameOf" />
     </template>
   </div>
 </template>

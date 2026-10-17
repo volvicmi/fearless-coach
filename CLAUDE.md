@@ -18,7 +18,7 @@ Ce fichier décrit **le projet tel qu'il existe** et fixe les règles de travail
 
 | Onglet | Contenu |
 |---|---|
-| **Draft** | Séries (BO1/3/5, côté, score), board de draft à 20 étapes, verrous Fearless, coach IA (conseil sur notre tour, prédiction sur le leur, review en fin de draft avec winrate estimé). |
+| **Draft** | Deux modes de série (BO1/3/5, côté, score). **Équipe** : board de draft à 20 étapes, verrous Fearless, coach IA (conseil sur notre tour, prédiction sur le leur, review en fin de draft avec winrate estimé). **Duel 1v1** : deux joueurs draftent l'un contre l'autre, sans conseil IA ; à la fin de chaque draft l'IA désigne le vainqueur (voir §5). L'accueil montre les séries en cartes (En cours / Terminées). |
 | **Prep** | Préparations par adversaire ; dans chacune, des drafts typés Engage / Poke / Front to back. **Seulement notre côté**, dans l'ordre réel du tournoi, avec plusieurs options par étape (la première = choix principal). |
 | **Équipe** | Un onglet par joueur : tier list S/A/B/C + ligne Practice (glisser-déposer, ordre dans le tier = force), stats ranked (SoloQ / Flex via l'API Riot). Onglet **Combos** : un champion et ses partenaires (Jhin + Shen / Camille / Alistar…). |
 | **Planning** | Jours habituels par joueur (heure, 21:00 par défaut), exceptions par date, vue semaine avec l'état du cinq de départ, rappel Discord hebdomadaire par webhook. |
@@ -80,6 +80,7 @@ Data Dragon (Riot) : champions et icônes
 - **Connaissances du jeu** dans `context/regles.md` (stable, ajouté au prompt système). Les données d'équipe (pools, tiers, combos, titulaires) ne sont **jamais recopiées dans un fichier** : le prompt les lit directement en base, comme l'onglet Équipe. Pas de fichier de patch à maintenir à la main.
 - **Sources pesées ensemble, sans priorité** : tous les champions disponibles, tier lists, stats ranked, méta et drafts pro, notes, combos, drafts préparées (celles contre l'adversaire d'abord), état de la série et Fearless.
 - **Réponses en JSON validé par Zod** avant affichage (conseil, prédiction, review).
+- **Duel 1v1** (`series.mode = 'duel'`) : jamais de conseil pendant la draft (`loadCoachContext` refuse). À la fin des 20 étapes, `server/utils/duel-judge.ts` (route `POST /api/duel/judge`) départage : vainqueur, % de chaque côté, points forts, ce qui manque, comment mieux drafter. Le % repart de `estimateWinRate` (force pro + mix de dégâts, sans équipe) et reste à ±10 points ; **le vainqueur vient du % final**, enregistré avec le verdict (`games.verdict` en JSON, `games.winner`). Le score de la série est la somme de ces verdicts. Le prompt n'a jamais les noms saisis par les joueurs (« Joueur 1 » / « Joueur 2 », remplacés après coup) : un nom ne peut pas influencer le juge. Modifier la draft efface le verdict. Dans un duel, `games.our_side` = le côté du joueur 1.
 - **Winrate** : la review part d'une estimation chiffrée (`shared/winrate.ts` : WR pro lissé, confort de nos joueurs, mix de dégâts) que l'IA peut ajuster de ±10 points au maximum, en expliquant pourquoi. Aucune autre statistique ne doit être inventée.
 - **Ton** : français, direct, niveau compétitif, phrases courtes et actionnables, en raisonnant aussi sur l'ordre des picks et le côté.
 
@@ -116,6 +117,7 @@ Prévue quand les fonctionnalités seront stables. Points à traiter :
 - Base : passer de SQLite à **Supabase** (Postgres, offre gratuite, Row Level Security sur toutes les tables). Les routes serveur passent en asynchrone.
 - Hébergement : à décider (Netlify ou statique + Supabase). Sans serveur permanent : découper les imports Riot / gol.gg en petits lots, et passer le rappel Discord en tâche planifiée de l'hébergeur.
 - **Connexion** obligatoire (Supabase Auth, Discord) avec liste blanche des membres : chacun remplit ses dispos lui-même.
+- **Duel 1v1 en ligne** : aujourd'hui les deux joueurs partagent le même écran, chacun son tour. En ligne, chaque joueur aura son propre navigateur : prévoir de lier un compte à chaque côté (le joueur ne peut jouer que ses propres étapes) et de synchroniser le board en temps réel (Supabase Realtime). Tout l'état d'un duel est déjà côté serveur, donc cette étape n'a pas à refaire le modèle de données.
 - Clés IA / Riot côté serveur uniquement (secrets de l'hébergeur ou Edge Functions).
 - Supabase gratuit se met en pause après 7 jours sans activité : le rappel hebdomadaire suffit à le garder éveillé.
 

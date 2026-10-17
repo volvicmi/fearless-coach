@@ -1,3 +1,9 @@
+<script setup lang="ts">
+const route = useRoute()
+// L'onglet Draft reste allumé dans une série d'équipe (/series) comme dans un duel (/duel).
+const draftActive = computed(() => route.path === '/' || route.path.startsWith('/series') || route.path.startsWith('/duel'))
+</script>
+
 <template>
   <div class="flex min-h-screen flex-col">
     <header class="flex items-center gap-6 border-b border-zinc-800 px-6 py-3">
@@ -5,7 +11,7 @@
         Fearless <span class="text-amber-400">Coach</span>
       </NuxtLink>
       <nav class="flex gap-4 text-sm text-zinc-400">
-        <NuxtLink to="/" class="hover:text-zinc-100" exact-active-class="text-zinc-100">
+        <NuxtLink to="/" class="hover:text-zinc-100" :class="{ 'text-zinc-100': draftActive }">
           Draft
         </NuxtLink>
         <NuxtLink to="/prep" class="hover:text-zinc-100" active-class="text-zinc-100">

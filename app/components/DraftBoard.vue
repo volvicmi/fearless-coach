@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DRAFT_ORDER, NO_BAN, fearlessLocked } from '#shared/draft'
-import type { FearlessMode } from '#shared/draft'
+import type { FearlessMode, Side } from '#shared/draft'
 import type { Champion, Game } from '#shared/types'
 
 const props = defineProps<{
@@ -10,6 +10,10 @@ const props = defineProps<{
   champions: Champion[]
   iconUrl: (id: string) => string
   nameOf: (id: string) => string
+  /** Qui joue chaque côté, à la place de « Nous » / « Eux » (duel) */
+  labels?: Record<Side, string>
+  /** Si renseigné, annuler une draft terminée demande d'abord confirmation avec ce message */
+  confirmUndo?: string
 }>()
 const emit = defineEmits<{ update: [actions: string[]] }>()
 
@@ -28,14 +32,18 @@ const disabled = computed(() => {
   return reasons
 })
 
+/** L'étape en cours et qui la joue : le nom d'un joueur ne passe jamais en capitales automatiques. */
 const actor = computed(() => {
-  if (!current.value) return ''
-  const who = current.value.side === props.game.ourSide ? 'Nous' : 'Eux'
-  return `${current.value.side === 'blue' ? 'Bleu' : 'Rouge'} ${current.value.type} ${current.value.slot + 1} · ${who}`
+  if (!current.value) return null
+  const who = props.labels?.[current.value.side] ?? (current.value.side === props.game.ourSide ? 'Nous' : 'Eux')
+  return { step: `${current.value.side === 'blue' ? 'Bleu' : 'Rouge'} ${current.value.type} ${current.value.slot + 1}`, who }
 })
 
 const play = (champ: string) => emit('update', [...props.game.actions, champ])
-const undo = () => emit('update', props.game.actions.slice(0, -1))
+function undo() {
+  if (done.value && props.confirmUndo && !confirm(props.confirmUndo)) return
+  emit('update', props.game.actions.slice(0, -1))
+}
 
 function onKey(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
@@ -52,6 +60,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <DraftSide
       side="blue"
       :is-us="game.ourSide === 'blue'"
+      :label="labels?.blue"
       :actions="game.actions"
       :current="current"
       :icon-url="iconUrl"
@@ -61,7 +70,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <div class="flex min-h-0 flex-col gap-3 lg:h-[70vh]">
       <div class="flex items-center gap-3">
         <p v-if="!done" class="text-sm">
-          En cours : <span class="font-semibold capitalize" :class="current?.side === 'blue' ? 'text-side-blue' : 'text-side-red'">{{ actor }}</span>
+          En cours : <span class="font-semibold" :class="current?.side === 'blue' ? 'text-side-blue' : 'text-side-red'"><span class="capitalize">{{ actor?.step }}</span> · {{ actor?.who }}</span>
           <span class="text-zinc-500"> · étape {{ game.actions.length + 1 }}/20</span>
         </p>
         <p v-else class="text-sm font-semibold text-emerald-400">
@@ -101,6 +110,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <DraftSide
       side="red"
       :is-us="game.ourSide === 'red'"
+      :label="labels?.red"
       :actions="game.actions"
       :current="current"
       :icon-url="iconUrl"

@@ -163,6 +163,13 @@ export function useDb(): DatabaseSync {
   db.exec(`UPDATE prep_scenarios SET color = 'engage' WHERE color NOT IN ('engage', 'poke', 'front-to-back')`)
   // Order inside a tier: 0 = leftmost = strongest of the tier.
   addColumn(db, 'pool_entries', 'position', 'INTEGER NOT NULL DEFAULT 0')
+  addColumn(db, 'pool_entries', 'train', 'INTEGER NOT NULL DEFAULT 0')
+  // Mode duel : deux joueurs face à face. Les séries existantes restent en mode équipe.
+  addColumn(db, 'series', 'mode', "TEXT NOT NULL DEFAULT 'team'")
+  addColumn(db, 'series', 'player_a', "TEXT NOT NULL DEFAULT ''")
+  addColumn(db, 'series', 'player_b', "TEXT NOT NULL DEFAULT ''")
+  // Verdict de l'IA (JSON) d'une draft de duel terminée.
+  addColumn(db, 'games', 'verdict', 'TEXT')
   return db
 }
 
@@ -211,6 +218,9 @@ export function toSeries(row: any): Series {
     opponent: row.opponent,
     format: row.format,
     fearless: row.fearless,
+    mode: row.mode === 'duel' ? 'duel' : 'team',
+    playerA: row.player_a ?? '',
+    playerB: row.player_b ?? '',
     createdAt: row.created_at,
     gameCount: row.game_count ?? undefined,
   }
@@ -224,7 +234,7 @@ export function loadTeam(): Player[] {
   const pools = new Map<number, PoolEntry[]>()
   for (const e of entries) {
     const list = pools.get(e.player_id) ?? []
-    list.push({ champId: e.champ_id, tier: e.tier, note: e.note })
+    list.push({ champId: e.champ_id, tier: e.tier, note: e.note, train: e.train === 1 })
     pools.set(e.player_id, list)
   }
   return players
@@ -248,5 +258,6 @@ export function toGame(row: any): Game {
     ourSide: row.our_side,
     actions: JSON.parse(row.actions),
     winner: row.winner,
+    verdict: row.verdict ? JSON.parse(row.verdict) : null,
   }
 }

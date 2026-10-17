@@ -54,8 +54,8 @@ with the starting five's status per day, and an optional weekly Discord summary 
 ```
 shared/draft.ts        draft order + Fearless rules (used by client and server)
 server/utils/          SQLite (node:sqlite) and Data Dragon
-server/api/            champions, series, games
-app/pages/             series list, series/draft page
+server/api/            champions, series, games, duel (verdict de l'IA)
+app/pages/             accueil Draft (cartes de séries), series/[id] (équipe), duel/[id] (1v1)
 app/components/        ChampionGrid, DraftBoard, DraftSide
 ```
 

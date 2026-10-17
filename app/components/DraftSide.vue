@@ -5,6 +5,8 @@ import type { DraftStep, Side } from '#shared/draft'
 const props = defineProps<{
   side: Side
   isUs: boolean
+  /** Remplace « Nous » / « Eux » (par exemple le nom d'un joueur en duel) */
+  label?: string
   actions: string[]
   current?: DraftStep
   iconUrl: (id: string) => string
@@ -22,7 +24,7 @@ const ring = computed(() => (props.side === 'blue' ? 'ring-side-blue' : 'ring-si
 <template>
   <section class="flex flex-col gap-3">
     <h3 class="text-sm font-semibold uppercase tracking-wider" :class="accent">
-      Côté {{ side === 'blue' ? 'bleu' : 'rouge' }} <span class="text-zinc-400 normal-case">· {{ isUs ? 'Nous' : 'Eux' }}</span>
+      Côté {{ side === 'blue' ? 'bleu' : 'rouge' }} <span class="text-zinc-400 normal-case">· {{ label ?? (isUs ? 'Nous' : 'Eux') }}</span>
     </h3>
 
     <div class="flex gap-1">

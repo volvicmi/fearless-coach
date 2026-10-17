@@ -16,7 +16,8 @@ function pickProvider(): Provider {
   })
 }
 
-function ask<S extends z.ZodType>(prompt: CoachPrompt, schema: S) {
+/** Appelle le fournisseur d'IA choisi (Gemini ou Claude) et renvoie une réponse validée par le schéma. */
+export function askAi<S extends z.ZodType>(prompt: CoachPrompt, schema: S) {
   return pickProvider() === 'gemini' ? askGemini(prompt, schema) : askClaude(prompt, schema)
 }
 
@@ -25,9 +26,9 @@ export async function askCoach(ctx: CoachContext): Promise<CoachResult> {
   const prompt = buildCoachPrompt(ctx)
   const started = Date.now()
   if (prompt.mode === 'review') {
-    const { raw, model } = await ask(prompt, ReviewSchema)
+    const { raw, model } = await askAi(prompt, ReviewSchema)
     return finalizeReview(ctx, raw, model, started)
   }
-  const { raw, model } = await ask(prompt, AdviceSchema)
+  const { raw, model } = await askAi(prompt, AdviceSchema)
   return finalizeAdvice(ctx, raw, model, started)
 }

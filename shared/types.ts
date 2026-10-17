@@ -14,23 +14,63 @@ export interface ChampionsResponse {
   champions: Champion[]
 }
 
+/** team = notre équipe contre un adversaire avec le coach IA ; duel = deux joueurs face à face, l'IA départage à la fin */
+export type SeriesMode = 'team' | 'duel'
+
+/** Vainqueur d'une game vu du joueur A : « nous » en mode équipe, le joueur 1 en duel. */
+export type GameResult = 'a' | 'b' | null
+
 export interface Series {
   id: number
   name: string
   opponent: string
   format: SeriesFormat
   fearless: FearlessMode
+  mode: SeriesMode
+  /** Duel : noms des deux joueurs. Le joueur 1 est le côté `ourSide` de chaque game. */
+  playerA: string
+  playerB: string
   createdAt: string
   gameCount?: number
+  /** Résultat de chaque game, pour les cartes de l'accueil */
+  results?: GameResult[]
 }
 
 export interface Game {
   id: number
   seriesId: number
   n: number
+  /** Côté de notre équipe (mode équipe) ou du joueur 1 (duel) */
   ourSide: Side
   actions: string[]
   winner: Side | null
+  /** Duel : verdict de l'IA une fois la draft terminée */
+  verdict?: DuelVerdict | null
+}
+
+/** Jugement d'un côté dans un duel. */
+export interface DuelSideVerdict {
+  /** Chance de victoire estimée depuis la draft seule, 0-100 (bleu + rouge = 100) */
+  winRate: number
+  archetype: string
+  strengths: string[]
+  /** Ce qui manque à la compo (engage, frontline, dégâts magiques…) */
+  missing: string[]
+  /** Comment cette draft aurait pu être meilleure (picks et bans concrets) */
+  better: string
+}
+
+/** Verdict de l'IA sur une draft de duel. */
+export interface DuelVerdict {
+  winner: Side
+  blue: DuelSideVerdict
+  red: DuelSideVerdict
+  /** Qui a le mieux drafté et pourquoi */
+  verdict: string
+  /** L'estimation chiffrée dont l'IA est partie (bleu %, facteurs) */
+  data: { blue: number, factors: { label: string, detail: string, impact: number }[] }
+  model: string
+  ms: number
 }
 
 export interface SeriesDetail {
@@ -41,7 +81,7 @@ export interface SeriesDetail {
 export const ROLES = ['top', 'jungle', 'mid', 'adc', 'support'] as const
 export type Role = typeof ROLES[number]
 
-/** S = best comfort, C = situational / pocket pick, P = practice (being trained, not ready for official games) */
+/** S = best comfort, C = situational / pocket pick. P (old practice tier) is no longer shown: its rows are kept but hidden. */
 export const TIERS = ['S', 'A', 'B', 'C', 'P'] as const
 export type Tier = typeof TIERS[number]
 
@@ -49,6 +89,8 @@ export interface PoolEntry {
   champId: string
   tier: Tier
   note: string
+  /** Priority to train: the player should work this pick first */
+  train: boolean
 }
 
 /** advice = our turn, prediction = their turn, review = draft complete */

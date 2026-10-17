@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { z } from 'zod'
 import { DRAFT_ORDER, NO_BAN, fearlessLocked, otherSide, picksOf, slotsOf } from '#shared/draft'
 import type { DraftStep, FearlessMode, SeriesFormat, Side } from '#shared/draft'
-import { assignRoles, stepLabel, suggestPicks, unavailableNow } from '#shared/coach'
+import { assignRoles, canFillAnyRole, freeRolesOf, stepLabel, suggestPicks, unavailableNow } from '#shared/coach'
 import { estimateWinRate } from '#shared/winrate'
 import type { CoachContext } from '#shared/coach'
 import type { CoachAdvice, CoachMode, CoachReview, Combo, Player, ProDraft, ProMeta } from '#shared/types'
@@ -95,7 +95,7 @@ Write every text field in correct French with all accents (é, è, à, ç…), c
  */
 const CONTEXT_FILES = ['regles.md']
 
-function contextBlock(): string {
+export function contextBlock(): string {
   return CONTEXT_FILES
     .map((name) => {
       try {
@@ -114,7 +114,9 @@ export async function loadCoachContext(gameId: number): Promise<CoachContext> {
   const gameRow = db.prepare('SELECT * FROM games WHERE id = ?').get(gameId)
   if (!gameRow) throw createError({ statusCode: 404, statusMessage: 'Game introuvable' })
   const game = toGame(gameRow)
-  const series = db.prepare('SELECT format, fearless, opponent FROM series WHERE id = ?').get(game.seriesId) as { format: SeriesFormat, fearless: FearlessMode, opponent: string }
+  const series = db.prepare('SELECT format, fearless, opponent, mode FROM series WHERE id = ?').get(game.seriesId) as { format: SeriesFormat, fearless: FearlessMode, opponent: string, mode: string }
+  // En duel, personne n'est conseillé pendant la draft : l'IA ne parle qu'à la fin, via le verdict.
+  if (series.mode === 'duel') throw createError({ statusCode: 400, statusMessage: 'Pas de conseil IA en duel : l’IA donne son verdict à la fin de la draft' })
   const games = (db.prepare('SELECT * FROM games WHERE series_id = ? ORDER BY n').all(game.seriesId) as any[]).map(toGame)
   const { champions } = await getChampions()
   return {
@@ -133,12 +135,11 @@ export function coachMode(ctx: CoachContext): { mode: CoachMode, step?: DraftSte
 function teamBlock(team: Player[], nameOf: (id: string) => string): string {
   if (!team.length) return 'OUR TEAM POOLS: none entered yet.'
   const lines = team.map((p) => {
+    // Legacy practice rows (tier P) are hidden in the app: never sent to the coach.
     const ready = p.pool.filter(e => e.tier !== 'P')
-    const practice = p.pool.filter(e => e.tier === 'P')
-    const pool = (ready.length
-      ? ready.map(e => `${nameOf(e.champId)} [${e.champId}] ${e.tier}${e.note ? ` (${e.note})` : ''}`).join(', ')
-      : 'empty')
-    + (practice.length ? `; practising (not ready, avoid in official games): ${practice.map(e => nameOf(e.champId)).join(', ')}` : '')
+    const pool = ready.length
+      ? ready.map(e => `${nameOf(e.champId)} [${e.champId}] ${e.tier}${e.train ? ' (à travailler en priorité)' : ''}${e.note ? ` (${e.note})` : ''}`).join(', ')
+      : 'empty'
     const ranked = p.soloq?.champions.slice(0, 10)
       .map(c => `${nameOf(c.champId)} ${c.games}g ${Math.round((c.wins / c.games) * 100)}%WR KDA ${((c.kills + c.assists) / Math.max(1, c.deaths)).toFixed(1)}${c.recent ? ` (${c.recent} in 30d)` : ''}`)
       .join(', ')
@@ -156,7 +157,7 @@ function teamBlock(team: Player[], nameOf: (id: string) => string): string {
   const shared = [...owners].filter(([, who]) => who.length > 1).map(([c, who]) => `${nameOf(c)} (${who.join(', ')})`)
 
   return [
-    'OUR TEAM POOLS, straight from our Team tab. Tiers: S = mastered, first choices unless the comp needs something else; A = good picks; B = backups / flex; C = only if needed. Practising = not ready: never recommend it for an official game. Inside a tier, the first listed is the strongest. Ranked stats (SoloQ/Flex) are small samples: they nuance a tier, they never replace it.',
+    'OUR TEAM POOLS, straight from our Team tab. Tiers: S = mastered, first choices unless the comp needs something else; A = good picks; B = backups / flex; C = only if needed. A champion marked "à travailler en priorité" is one the player should practise first: among equal options, favour it. Inside a tier, the first listed is the strongest. Ranked stats (SoloQ/Flex) are small samples: they nuance a tier, they never replace it.',
     lines.join('\n'),
     shared.length ? `In several players' pools (check which role it would be played in before recommending it): ${shared.join('; ')}` : '',
   ].filter(Boolean).join('\n')
@@ -193,7 +194,7 @@ function notesBlock(): string {
   return notes ? `COACH NOTES (written by our staff):\n${notes}` : ''
 }
 
-function proMetaBlock(meta: ProMeta | undefined, nameOf: (id: string) => string): string {
+export function proMetaBlock(meta: ProMeta | undefined, nameOf: (id: string) => string): string {
   if (!meta?.games) return ''
   const pct = (x: number) => Math.round(x * 100)
   const lines = meta.champions.slice(0, 40).map(c =>
@@ -201,7 +202,7 @@ function proMetaBlock(meta: ProMeta | undefined, nameOf: (id: string) => string)
   return `PRO META (${meta.games} pro games, LCK/LEC, most present first):\n${lines.join('\n')}`
 }
 
-function proDraftsBlock(drafts: ProDraft[], nameOf: (id: string) => string): string {
+export function proDraftsBlock(drafts: ProDraft[], nameOf: (id: string) => string): string {
   if (!drafts.length) return ''
   const list = (actions: string[], side: Side, type: 'ban' | 'pick') =>
     slotsOf(actions, side, type).filter((c): c is string => !!c && c !== NO_BAN).map(nameOf).join(', ')
@@ -237,7 +238,10 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
 
   const locked = [...fearlessLocked(ctx.fearless, ctx.games, ctx.game).keys()].map(nameOf)
   const blocked = unavailableNow(ctx)
-  const available = ctx.champions.filter(c => !blocked.has(c.id)).map(c => c.id)
+  // Their roles still open (from their picks): a prediction must be a champion that can fill one of them.
+  const theirFree = freeRolesOf(picksOf(ctx.game.actions, them))
+  const fitsTheirRoles = (id: string) => mode !== 'prediction' || canFillAnyRole(id, theirFree)
+  const available = ctx.champions.filter(c => !blocked.has(c.id) && fitsTheirRoles(c.id)).map(c => c.id)
   const shortlist = mode === 'advice'
     ? suggestPicks(ctx, 8).map(s => `${s.champId} -> ${s.player} (${s.role}, ${s.tier}), score ${s.score.toFixed(2)}: ${s.reasons.join('; ')}`)
     : []
@@ -256,6 +260,7 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
     `CURRENT DRAFT:\n${draft.length ? draft.join('\n') : '(draft not started)'}`,
     `OUR PICKS (${us}): ${picksText(us)}`,
     `THEIR PICKS (${them}): ${picksText(them)}`,
+    mode === 'prediction' ? `THEIR FREE ROLES (still to fill): ${theirFree.join(', ') || 'none'}. Only predict champions that can play one of these roles.` : '',
     preparedDraftsBlock(loadPreparedDrafts(ctx.opponent), ctx.opponent, nameOf),
     proDraftsBlock(loadProDrafts(ctx.game.actions.filter(a => a !== NO_BAN), 10), nameOf),
     shortlist.length ? `ENGINE SHORTLIST:\n${shortlist.join('\n')}` : '',
@@ -281,6 +286,8 @@ export function finalizeAdvice(ctx: CoachContext, raw: RawAdvice, model: string,
   const recommendations = raw.recommendations
     .map(r => ({ ...r, champId: resolve(r.champion) }))
     .filter((r): r is typeof r & { champId: string } => !!r.champId && !blocked.has(r.champId))
+    // A predicted pick must fit a role the enemy still has to fill.
+    .filter(r => mode !== 'prediction' || canFillAnyRole(r.champId, freeRolesOf(picksOf(ctx.game.actions, otherSide(ctx.game.ourSide)))))
     .slice(0, 3)
     .map(({ champId, player, confidence, reason }) => ({ champId, player: mode === 'advice' ? player : null, confidence, reason }))
 
