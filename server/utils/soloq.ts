@@ -1,4 +1,4 @@
-import type { Role, SoloqChamp, SoloqSummary, SyncStatus } from '#shared/types'
+import type { RankedStats, Role, SoloqChamp, SoloqSummary, SyncStatus } from '#shared/types'
 
 const POSITION_TO_ROLE: Record<string, Role> = {
   TOP: 'top',
@@ -8,6 +8,8 @@ const POSITION_TO_ROLE: Record<string, Role> = {
   UTILITY: 'support',
 }
 const REMAKE_S = 300
+const QUEUE_SOLO = 420
+const QUEUE_FLEX = 440
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /** Compact participant stored in riot_matches (all 10 players, so teammates synced later reuse it). */
@@ -56,11 +58,12 @@ async function runSync(playerId: number, status: SyncStatus) {
 
   status.message = 'Listing ranked games…'
   const { riotMatchCount } = useRuntimeConfig()
-  const ids = await riotGet<string[]>(region, `/lol/match/v5/matches/by-puuid/${account.puuid}/ids`, {
-    type: 'ranked', // SoloQ + Flex
-    start: 0,
-    count: Math.min(100, Number(riotMatchCount) || 60),
-  })
+  const count = Math.min(100, Number(riotMatchCount) || 60)
+  // SoloQ and Flex are listed separately so Flex games aren't crowded out by SoloQ.
+  const ids: string[] = []
+  for (const queue of [QUEUE_SOLO, QUEUE_FLEX]) {
+    ids.push(...await riotGet<string[]>(region, `/lol/match/v5/matches/by-puuid/${account.puuid}/ids`, { queue, start: 0, count }))
+  }
 
   const known = new Set((db.prepare('SELECT match_id FROM player_games WHERE puuid = ?').all(account.puuid) as { match_id: string }[]).map(r => r.match_id))
   const todo = ids.filter(id => !known.has(id))
@@ -114,10 +117,20 @@ async function runSync(playerId: number, status: SyncStatus) {
   status.message = todo.length ? `${todo.length} new game(s) imported` : 'Already up to date'
 }
 
-/** Per-champion ranked stats for one player, most played first. */
+/** Ranked stats for one player: all ranked games, plus SoloQ and Flex apart. */
 export function loadSoloq(puuid: string, syncedAt: string | null): SoloqSummary | null {
   if (!puuid) return null
   const rows = useDb().prepare('SELECT * FROM player_games WHERE puuid = ? ORDER BY played_at DESC').all(puuid) as any[]
+  return {
+    syncedAt,
+    ...aggregate(rows),
+    solo: aggregate(rows.filter(r => r.queue_id === QUEUE_SOLO)),
+    flex: aggregate(rows.filter(r => r.queue_id === QUEUE_FLEX)),
+  }
+}
+
+/** Per-champion totals, most played first. */
+function aggregate(rows: any[]): RankedStats {
   const now = Date.now()
   const byChamp = new Map<string, SoloqChamp & { seconds: number, cs: number, roles: Map<Role, number> }>()
 
@@ -146,10 +159,5 @@ export function loadSoloq(puuid: string, syncedAt: string | null): SoloqSummary 
     }))
     .sort((a, b) => b.games - a.games || b.lastPlayed - a.lastPlayed)
 
-  return {
-    syncedAt,
-    games: rows.length,
-    wins: rows.reduce((n, r) => n + r.win, 0),
-    champions,
-  }
+  return { games: rows.length, wins: rows.reduce((n, r) => n + r.win, 0), champions }
 }

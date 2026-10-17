@@ -2,7 +2,7 @@
 import { MAX_GAMES, fearlessLocked, otherSide } from '#shared/draft'
 import type { Side } from '#shared/draft'
 import type { CoachContext } from '#shared/coach'
-import type { Game, Player, SeriesDetail } from '#shared/types'
+import type { Game, Player, ProMeta, SeriesDetail } from '#shared/types'
 
 const route = useRoute()
 const id = route.params.id as string
@@ -13,6 +13,7 @@ if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Series not
 const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (champ: string) => byId.value.get(champ)?.name ?? champ
 const { data: team } = await useFetch<Player[]>('/api/team')
+const { data: pro } = await useFetch<{ meta: ProMeta }>('/api/pro')
 
 const activeN = ref(data.value.games.at(-1)?.n ?? 1)
 const game = computed(() => data.value?.games.find(g => g.n === activeN.value))
@@ -48,6 +49,7 @@ const coachCtx = computed<CoachContext | undefined>(() => game.value && {
   format: series.value.format,
   team: team.value ?? [],
   champions: champions.value,
+  pro: pro.value?.meta,
 })
 
 /** Saves run one after another so fast clicks + undo reach the server in the right order. */
@@ -120,10 +122,9 @@ async function nextGame() {
           :key="s"
           type="button"
           class="rounded-md px-3 py-1 capitalize"
-          :class="game.ourSide === s ? (s === 'blue' ? 'bg-side-blue' : 'bg-side-red') : 'bg-zinc-900 text-zinc-400'"
-          :disabled="game.actions.length > 0"
-          :title="game.actions.length ? 'Undo the whole draft to change sides' : undefined"
-          @click="patchGame(game, { ourSide: s })"
+          :class="game.ourSide === s ? (s === 'blue' ? 'bg-side-blue' : 'bg-side-red') : 'cursor-pointer bg-zinc-900 text-zinc-400 hover:text-zinc-100'"
+          title="Switch our side at any time: the draft stays, only which side is ours changes"
+          @click="game.ourSide !== s && patchGame(game, { ourSide: s })"
         >
           {{ s }}
         </button>

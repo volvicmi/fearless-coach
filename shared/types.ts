@@ -105,12 +105,18 @@ export interface SoloqChamp {
   role: Role | null
 }
 
-export interface SoloqSummary {
-  syncedAt: string | null
+export interface RankedStats {
   games: number
   wins: number
   /** Most played first */
   champions: SoloqChamp[]
+}
+
+/** All ranked games (SoloQ + Flex), plus each queue apart. */
+export interface SoloqSummary extends RankedStats {
+  syncedAt: string | null
+  solo: RankedStats
+  flex: RankedStats
 }
 
 export interface Player {
@@ -122,6 +128,48 @@ export interface Player {
   pool: PoolEntry[]
   /** null until the first Riot sync */
   soloq: SoloqSummary | null
+}
+
+export interface ProChampStat {
+  champId: string
+  picks: number
+  bans: number
+  wins: number
+  losses: number
+  /** gol.gg priority score (bans and early picks weigh more) */
+  prio: number
+  /** Average pick round (1 = first rotation) */
+  avgRound: number
+  /** % of picks made blind */
+  blindPct: number
+  /** (picks + bans) / games, 0-1 */
+  presence: number
+  /** wins / picks, 0-1 */
+  winRate: number
+}
+
+export interface ProMeta {
+  games: number
+  /** Most present first */
+  champions: ProChampStat[]
+}
+
+export interface ProTournament {
+  name: string
+  syncedAt: string | null
+  series: number
+  games: number
+}
+
+/** One real pro game: actions follow DRAFT_ORDER, like our own games. */
+export interface ProDraft {
+  tournament: string
+  date: string
+  patch: string
+  blueTeam: string
+  redTeam: string
+  winner: 'blue' | 'red'
+  actions: string[]
 }
 
 export interface SyncStatus {

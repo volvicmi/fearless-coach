@@ -25,6 +25,9 @@ For ranked stats, add `RIOT_API_KEY` (from https://developer.riotgames.com, deve
 to `.env`, set each player's Riot ID (`Name#TAG`) in the Team tab and click **Sync**. EUW by default
 (`NUXT_RIOT_PLATFORM=euw1`, `NUXT_RIOT_REGION=europe`); the last 60 ranked games are imported, then only new ones.
 
+Pro data comes from gol.gg (Pro tab): champion stats and the real drafts of each tournament, imported at one
+page per second and cached. Coach notes (Notes tab) are free markdown sent to the AI with every request.
+
 ## What works today
 
 - **Series**: Bo1/Bo3/Bo5, Fearless (a champion picked in an earlier game is locked for both teams) or normal draft.

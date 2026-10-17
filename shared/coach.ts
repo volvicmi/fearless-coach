@@ -1,7 +1,7 @@
 import { DRAFT_ORDER, MAX_GAMES, NO_BAN, fearlessLocked, picksOf } from './draft'
 import type { DraftStep, FearlessMode, GameDraft, SeriesFormat } from './draft'
 import { ROLES } from './types'
-import type { Champion, Player, Role, Tier } from './types'
+import type { Champion, Player, ProMeta, Role, Tier } from './types'
 
 export const TIER_VALUE: Record<Tier, number> = { S: 1, A: 0.75, B: 0.5, C: 0.3, P: 0.1 }
 
@@ -12,6 +12,8 @@ export interface CoachContext {
   format: SeriesFormat
   team: Player[]
   champions: Champion[]
+  /** Pro meta from gol.gg, when imported */
+  pro?: ProMeta
 }
 
 export interface Suggestion {
@@ -75,6 +77,7 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
     rolesOf.get(e.champId)!.add(p.role)
   }
 
+  const proById = new Map((ctx.pro?.champions ?? []).map(c => [c.champId, c]))
   const ourMages = ourPicks.filter(c => isMage(byId.get(c))).length
   const ourMarksmen = ourPicks.filter(c => isMarksman(byId.get(c))).length
 
@@ -99,6 +102,13 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
         score += Math.max(-0.1, Math.min(0.1, (wr - 0.5) * 0.5))
         if (ranked.recent >= 5) score += 0.05
         reasons.push(`Ranked: ${ranked.games} games, ${Math.round(wr * 100)}% WR${ranked.recent ? `, ${ranked.recent} in 30 days` : ''}`)
+      }
+
+      // Pro meta: presence in LCK/LEC, a nudge rather than a rule.
+      const pro = proById.get(entry.champId)
+      if (pro && pro.presence >= 0.2) {
+        score += Math.min(pro.presence, 0.9) * 0.1
+        reasons.push(`Pro: ${Math.round(pro.presence * 100)}% presence${pro.picks ? `, ${Math.round(pro.winRate * 100)}% WR` : ''}`)
       }
 
       const flexRoles = rolesOf.get(entry.champId)

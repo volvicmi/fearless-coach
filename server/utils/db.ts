@@ -44,6 +44,48 @@ export function useDb(): DatabaseSync {
     -- 'soft' Fearless was dropped: there is only one Fearless rule.
     UPDATE series SET fearless = 'hard' WHERE fearless = 'soft';
 
+    -- Free-form values such as the coach notes.
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
+    -- Pro data from gol.gg (see server/utils/pro.ts).
+    CREATE TABLE IF NOT EXISTS pro_tournaments (
+      name      TEXT PRIMARY KEY,
+      synced_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS pro_champ_stats (
+      tournament TEXT NOT NULL,
+      champ_id   TEXT NOT NULL,
+      picks      INTEGER NOT NULL,
+      bans       INTEGER NOT NULL,
+      wins       INTEGER NOT NULL,
+      losses     INTEGER NOT NULL,
+      prio       REAL NOT NULL,
+      avg_round  REAL NOT NULL,
+      blind_pct  REAL NOT NULL,
+      PRIMARY KEY (tournament, champ_id)
+    );
+    CREATE TABLE IF NOT EXISTS pro_series (
+      series_id  INTEGER PRIMARY KEY,
+      tournament TEXT NOT NULL,
+      date       TEXT NOT NULL,
+      patch      TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS pro_games (
+      series_id  INTEGER NOT NULL,
+      n          INTEGER NOT NULL,
+      tournament TEXT NOT NULL,
+      date       TEXT NOT NULL,
+      patch      TEXT NOT NULL,
+      blue_team  TEXT NOT NULL,
+      red_team   TEXT NOT NULL,
+      winner     TEXT NOT NULL,
+      actions    TEXT NOT NULL,
+      PRIMARY KEY (series_id, n)
+    );
+
     -- Riot API cache: finished matches never change, so they are fetched once.
     CREATE TABLE IF NOT EXISTS riot_matches (
       match_id     TEXT PRIMARY KEY,
@@ -76,6 +118,15 @@ export function useDb(): DatabaseSync {
   // Order inside a tier: 0 = leftmost = strongest of the tier.
   addColumn(db, 'pool_entries', 'position', 'INTEGER NOT NULL DEFAULT 0')
   return db
+}
+
+export function getSetting(key: string): string {
+  const row = useDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined
+  return row?.value ?? ''
+}
+
+export function setSetting(key: string, value: string) {
+  useDb().prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value').run(key, value)
 }
 
 /** S → A → B → C → Practice, then the order chosen inside each tier. */

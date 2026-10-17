@@ -14,7 +14,12 @@ const showAll = ref(false)
 const syncing = computed(() => status.value?.state === 'running')
 
 const soloq = computed(() => props.player.soloq)
-const champs = computed(() => (soloq.value?.champions ?? []).slice(0, showAll.value ? undefined : 8))
+const queue = ref<'all' | 'solo' | 'flex'>('all')
+const QUEUE_LABEL = { all: 'All', solo: 'SoloQ', flex: 'Flex' } as const
+const statsOf = (q: 'all' | 'solo' | 'flex') => (soloq.value ? (q === 'all' ? soloq.value : soloq.value[q]) : null)
+/** Stats of the selected queue */
+const stats = computed(() => statsOf(queue.value))
+const champs = computed(() => (stats.value?.champions ?? []).slice(0, showAll.value ? undefined : 8))
 const poolTier = computed(() => new Map(props.player.pool.map(e => [e.champId, e.tier])))
 
 const pct = (wins: number, games: number) => (games ? Math.round((wins / games) * 100) : 0)
@@ -57,9 +62,8 @@ async function addToPool(champId: string) {
       <h4 class="text-xs font-semibold uppercase tracking-wide text-zinc-400">
         Ranked
       </h4>
-      <span v-if="soloq?.games" class="text-xs text-zinc-500">
-        {{ soloq.games }} games · <span :class="wrClass(pct(soloq.wins, soloq.games))">{{ pct(soloq.wins, soloq.games) }}% WR</span>
-        <template v-if="soloq.syncedAt"> · synced {{ soloq.syncedAt.slice(0, 16).replace('T', ' ') }}</template>
+      <span v-if="soloq?.syncedAt" class="text-xs text-zinc-500">
+        synced {{ soloq.syncedAt.slice(0, 16).replace('T', ' ') }}
       </span>
       <button
         type="button"
@@ -69,6 +73,23 @@ async function addToPool(champId: string) {
         @click="sync"
       >
         {{ syncing ? (status!.total ? `${status!.done}/${status!.total}` : 'Syncing…') : 'Sync' }}
+      </button>
+    </div>
+
+    <div v-if="soloq?.games" class="flex gap-1 text-xs">
+      <button
+        v-for="q in (['all', 'solo', 'flex'] as const)"
+        :key="q"
+        type="button"
+        class="flex-1 cursor-pointer rounded-md border px-2 py-1"
+        :class="queue === q ? 'border-amber-400 bg-zinc-900 text-zinc-100' : 'border-zinc-800 text-zinc-400 hover:text-zinc-200'"
+        @click="queue = q"
+      >
+        {{ QUEUE_LABEL[q] }}
+        <span class="text-zinc-500">{{ statsOf(q)!.games }}</span>
+        <span v-if="statsOf(q)!.games" :class="wrClass(pct(statsOf(q)!.wins, statsOf(q)!.games))">
+          · {{ pct(statsOf(q)!.wins, statsOf(q)!.games) }}%
+        </span>
       </button>
     </div>
 
@@ -147,12 +168,12 @@ async function addToPool(champId: string) {
       </tbody>
     </table>
     <button
-      v-if="(soloq?.champions.length ?? 0) > 8"
+      v-if="(stats?.champions.length ?? 0) > 8"
       type="button"
       class="self-start text-xs text-zinc-500 hover:text-zinc-200"
       @click="showAll = !showAll"
     >
-      {{ showAll ? 'Show less' : `Show all ${soloq!.champions.length} champions` }}
+      {{ showAll ? 'Show less' : `Show all ${stats!.champions.length} champions` }}
     </button>
   </section>
 </template>

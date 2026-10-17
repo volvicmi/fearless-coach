@@ -34,7 +34,6 @@ const TIER_CAPTION: Record<Tier, string> = {
 }
 
 const tab = ref<'champions' | 'ranked'>('champions')
-const clickTier = ref<Tier>('A')
 
 const card = ref<HTMLElement>()
 useChampionDrag(card, (champId: string, target: DropTarget, index?: number) =>
@@ -138,11 +137,13 @@ async function removePlayer() {
               </div>
               <button
                 type="button"
-                class="absolute right-0 top-0 hidden size-5 items-center justify-center rounded-full bg-zinc-950/90 text-xs text-zinc-300 ring-1 ring-zinc-700 hover:bg-red-600 hover:text-white group-hover:flex"
+                class="absolute -right-1 -top-1 hidden size-5 cursor-pointer place-items-center rounded-full bg-zinc-950 text-zinc-400 shadow ring-1 ring-zinc-700 transition-colors hover:bg-red-600 hover:text-white hover:ring-red-500 group-hover:grid"
                 :title="`Remove ${nameOf(e.champId)}`"
                 @click="removeChamp(e.champId)"
               >
-                ×
+                <svg viewBox="0 0 12 12" class="size-2.5" aria-hidden="true">
+                  <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
               </button>
             </div>
           </div>
@@ -164,35 +165,21 @@ async function removePlayer() {
           </button>
         </div>
 
-        <template v-if="tab === 'champions'">
-          <div class="flex items-center gap-1.5 text-xs">
-            <span class="text-zinc-400">Click adds as</span>
-            <button
-              v-for="t in TIERS"
-              :key="t"
-              type="button"
-              class="rounded px-2 py-0.5 font-bold"
-              :class="clickTier === t ? TIER_STYLE[t] : 'bg-zinc-900 text-zinc-400'"
-              :title="TIER_CAPTION[t]"
-              @click="clickTier = t"
-            >
-              {{ t === 'P' ? 'Practice' : t }}
-            </button>
-          </div>
-          <ChampionGrid
-            class="min-h-80 flex-1"
-            :champions="champions"
-            :disabled="inPool"
-            :icon-url="iconUrl"
-            :active="true"
-            drag-source
-            @select="id => setTier(id, clickTier)"
-          />
-        </template>
+        <!-- Enter (or a click) adds at the end of B; drag for a precise spot -->
+        <ChampionGrid
+          v-if="tab === 'champions'"
+          class="min-h-80 flex-1"
+          :champions="champions"
+          :disabled="inPool"
+          :icon-url="iconUrl"
+          :active="true"
+          drag-source
+          @select="id => setTier(id, 'B')"
+        />
         <SoloqPanel v-else class="min-h-0 flex-1 overflow-y-auto" :player="player" :icon-url="iconUrl" :name-of="nameOf" @changed="emit('changed')" />
 
         <p class="text-center text-[11px] text-zinc-600">
-          Drag a champion onto a row to add it · drag it back here to remove it
+          Drag a champion onto a row · Enter adds the first match to B · drag back here to remove
         </p>
       </aside>
     </div>

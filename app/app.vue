@@ -11,6 +11,12 @@
         <NuxtLink to="/team" class="hover:text-zinc-100" active-class="text-zinc-100">
           Team
         </NuxtLink>
+        <NuxtLink to="/pro" class="hover:text-zinc-100" active-class="text-zinc-100">
+          Pro
+        </NuxtLink>
+        <NuxtLink to="/notes" class="hover:text-zinc-100" active-class="text-zinc-100">
+          Notes
+        </NuxtLink>
       </nav>
       <a
         href="https://developer.riotgames.com/"
