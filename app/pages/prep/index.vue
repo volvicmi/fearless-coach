@@ -6,12 +6,9 @@ const { data: preps, refresh } = await useFetch<Prep[]>('/api/preps')
 const { byId, iconUrl } = await useChampions()
 const nameOf = (id: string) => byId.value.get(id)?.name ?? id
 
-const form = reactive({ name: '', opponent: '' })
-const creating = ref(false)
-
+/** One click: the prep (named "Prep N", renamed inside) and its first draft open right away. */
 async function create() {
-  if (!form.name.trim()) return
-  const { id } = await $fetch<{ id: number }>('/api/preps', { method: 'POST', body: form })
+  const { id } = await $fetch<{ id: number }>('/api/preps', { method: 'POST', body: {} })
   await navigateTo(`/prep/${id}`)
 }
 
@@ -43,23 +40,12 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
         </p>
       </div>
       <button
-        v-if="!creating"
         type="button"
         class="ml-auto cursor-pointer rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300"
-        @click="creating = true"
+        @click="create"
       >
         + New prep
       </button>
-      <form v-else class="ml-auto flex gap-2" @submit.prevent="create">
-        <input v-model="form.name" autofocus placeholder="Name, e.g. Scrims week 3" class="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm">
-        <input v-model="form.opponent" placeholder="Opponent (optional)" class="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm">
-        <button class="cursor-pointer rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300">
-          Create
-        </button>
-        <button type="button" class="cursor-pointer px-2 text-sm text-zinc-500 hover:text-zinc-200" @click="creating = false">
-          Cancel
-        </button>
-      </form>
     </div>
 
     <div v-if="!preps?.length" class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-800 py-16 text-center">
@@ -69,7 +55,7 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
       <p class="max-w-md text-sm text-zinc-500">
         Create a prep for your next opponent, then cook a few drafts: engage, poke, front to back… with backup picks on every step.
       </p>
-      <button type="button" class="cursor-pointer rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300" @click="creating = true">
+      <button type="button" class="cursor-pointer rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300" @click="create">
         + New prep
       </button>
     </div>
