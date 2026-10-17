@@ -14,6 +14,10 @@ export default defineEventHandler(async (event) => {
     if (!ROLES.includes(body.role)) throw createError({ statusCode: 400, statusMessage: 'invalid role' })
     db.prepare('UPDATE players SET role = ? WHERE id = ?').run(body.role, id)
   }
+  if (body.status !== undefined) {
+    if (!['starter', 'sub'].includes(body.status)) throw createError({ statusCode: 400, statusMessage: 'invalid status' })
+    db.prepare('UPDATE players SET status = ? WHERE id = ?').run(body.status, id)
+  }
   if (body.riotId !== undefined) {
     db.prepare('UPDATE players SET riot_id = ? WHERE id = ?').run(String(body.riotId).trim(), id)
   }

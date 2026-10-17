@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   `).run(
     prepId,
     source ? `${source.name} (copy)` : `Draft ${n + 1}`,
-    source?.color ?? 'amber',
+    source?.color ?? 'engage',
     source?.our_side ?? 'blue',
     source?.slots ?? JSON.stringify(emptySlots()),
     source?.notes ?? '',

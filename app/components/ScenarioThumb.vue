@@ -18,7 +18,7 @@ function slotsFor(side: Side, type: 'ban' | 'pick') {
   })
   return out
 }
-const style = computed(() => SCENARIO_STYLE[props.scenario.color])
+const style = computed(() => styleOf(props.scenario.color))
 const filled = computed(() => props.scenario.slots.filter(s => s.length).length)
 </script>
 
@@ -61,7 +61,8 @@ const filled = computed(() => props.scenario.slots.filter(s => s.length).length)
       </div>
     </div>
     <div class="flex items-center gap-2 text-[10px] text-zinc-500">
-      <span>{{ filled }}/20 steps</span>
+      <span :class="style.text">{{ style.label }}</span>
+      <span>· {{ filled }}/20 steps</span>
       <span v-if="scenario.notes" class="truncate">· {{ scenario.notes.split('\n')[0] }}</span>
     </div>
   </div>

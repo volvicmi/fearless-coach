@@ -63,6 +63,21 @@ export function useDb(): DatabaseSync {
       position INTEGER NOT NULL DEFAULT 0
     );
 
+    -- Planning: usual days per player (weekday 0 = Monday) and per-date exceptions.
+    CREATE TABLE IF NOT EXISTS availability_habits (
+      player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+      weekday   INTEGER NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+      start     TEXT NOT NULL,
+      PRIMARY KEY (player_id, weekday)
+    );
+    CREATE TABLE IF NOT EXISTS availability_exceptions (
+      player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+      date      TEXT NOT NULL,
+      available INTEGER NOT NULL,
+      start     TEXT,
+      PRIMARY KEY (player_id, date)
+    );
+
     -- Free-form values such as the coach notes.
     CREATE TABLE IF NOT EXISTS settings (
       key   TEXT PRIMARY KEY,
@@ -133,7 +148,10 @@ export function useDb(): DatabaseSync {
   `)
   addColumn(db, 'players', 'puuid', "TEXT NOT NULL DEFAULT ''")
   addColumn(db, 'players', 'soloq_synced_at', 'TEXT')
+  addColumn(db, 'players', 'status', "TEXT NOT NULL DEFAULT 'starter'")
   allowPracticeTier(db)
+  // Draft colours became draft styles: anything else falls back to "engage".
+  db.exec(`UPDATE prep_scenarios SET color = 'engage' WHERE color NOT IN ('engage', 'poke', 'front-to-back')`)
   // Order inside a tier: 0 = leftmost = strongest of the tier.
   addColumn(db, 'pool_entries', 'position', 'INTEGER NOT NULL DEFAULT 0')
   return db
@@ -206,6 +224,7 @@ export function loadTeam(): Player[] {
       name: p.name,
       role: p.role,
       riotId: p.riot_id,
+      status: p.status,
       pool: pools.get(p.id) ?? [],
       soloq: loadSoloq(p.puuid, p.soloq_synced_at),
     }))

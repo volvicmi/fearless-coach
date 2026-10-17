@@ -19,6 +19,11 @@ export default defineNuxtConfig({
   app: {
     head: { title: 'Fearless Coach' },
   },
+  nitro: {
+    experimental: { tasks: true },
+    // Checks every 15 minutes whether the weekly Discord reminder is due (server/tasks/planning/reminder.ts).
+    scheduledTasks: { '*/15 * * * *': ['planning:reminder'] },
+  },
   vite: {
     plugins: [tailwindcss() as any],
   },

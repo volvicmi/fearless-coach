@@ -127,12 +127,15 @@ export interface Player {
   role: Role
   /** "GameName#TAG" */
   riotId: string
+  /** Starting five or substitute */
+  status: 'starter' | 'sub'
   pool: PoolEntry[]
   /** null until the first Riot sync */
   soloq: SoloqSummary | null
 }
 
-export const SCENARIO_COLORS = ['amber', 'sky', 'emerald', 'rose', 'violet', 'zinc'] as const
+/** Draft style of a prepared scenario (stored in the `color` column). */
+export const SCENARIO_COLORS = ['engage', 'poke', 'front-to-back'] as const
 export type ScenarioColor = typeof SCENARIO_COLORS[number]
 
 /** A draft prepared in advance; every step can hold several alternatives (first = main choice). */
@@ -154,6 +157,8 @@ export interface Prep {
   opponent: string
   createdAt: string
   scenarioCount?: number
+  /** Light copy of the drafts, for previews in the prep list */
+  scenarios?: Pick<PrepScenario, 'id' | 'name' | 'color' | 'ourSide' | 'slots'>[]
 }
 
 export interface PrepDetail {

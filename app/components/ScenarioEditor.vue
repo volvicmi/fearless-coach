@@ -91,7 +91,7 @@ watch(notes, (text) => {
   <div ref="root" class="flex select-none flex-col gap-4">
     <!-- Scenario header -->
     <div class="flex flex-wrap items-center gap-3">
-      <span class="size-3 rounded-full" :class="SCENARIO_STYLE[scenario.color].dot" />
+      <span class="size-3 rounded-full" :class="styleOf(scenario.color).dot" />
       <input
         :value="scenario.name"
         class="w-64 rounded-md border border-transparent bg-transparent px-1 text-lg font-semibold hover:border-zinc-700 focus:border-amber-400 focus:outline-none"
@@ -102,11 +102,13 @@ watch(notes, (text) => {
           v-for="c in SCENARIO_COLORS"
           :key="c"
           type="button"
-          class="size-5 cursor-pointer rounded-full ring-offset-2 ring-offset-zinc-950"
-          :class="[SCENARIO_STYLE[c].dot, scenario.color === c && 'ring-2 ring-zinc-200']"
-          :title="c"
+          class="flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs"
+          :class="scenario.color === c ? [SCENARIO_STYLE[c].border, SCENARIO_STYLE[c].tint, SCENARIO_STYLE[c].text] : 'border-zinc-800 text-zinc-400 hover:text-zinc-200'"
           @click="emit('update', { color: c })"
-        />
+        >
+          <span class="size-2 rounded-full" :class="SCENARIO_STYLE[c].dot" />
+          {{ SCENARIO_STYLE[c].label }}
+        </button>
       </div>
       <div class="flex items-center gap-1 text-sm">
         <span class="text-zinc-400">We are</span>

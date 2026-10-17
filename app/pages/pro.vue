@@ -1,14 +1,49 @@
 <script setup lang="ts">
 import type { ProMeta, ProTournament, SyncStatus } from '#shared/types'
 
-const { data, refresh } = await useFetch<{ tournaments: ProTournament[], meta: ProMeta }>('/api/pro')
+const { data, refresh } = await useFetch<{ tournaments: ProTournament[], current: string, meta: ProMeta }>('/api/pro')
+
+async function setCurrent(name: string) {
+  await $fetch('/api/pro/current', { method: 'PUT', body: { name: data.value?.current === name ? '' : name } })
+  await refresh()
+}
 const { byId, iconUrl } = await useChampions()
 const nameOf = (id: string) => byId.value.get(id)?.name ?? id
 
 const newName = ref('')
 const statuses = reactive<Record<string, SyncStatus>>({})
 const showAll = ref(false)
-const champs = computed(() => (data.value?.meta.champions ?? []).slice(0, showAll.value ? undefined : 40))
+
+type SortKey = 'name' | 'presence' | 'picks' | 'bans' | 'winRate' | 'avgRound' | 'blindPct'
+const COLUMNS: { key: SortKey, label: string, title?: string }[] = [
+  { key: 'presence', label: 'Presence' },
+  { key: 'picks', label: 'Picks' },
+  { key: 'bans', label: 'Bans' },
+  { key: 'winRate', label: 'WR', title: 'Win rate when picked (champions with fewer than 3 picks go last)' },
+  { key: 'avgRound', label: 'Round', title: 'Average pick round' },
+  { key: 'blindPct', label: 'Blind', title: 'Blind pick %' },
+]
+const sort = ref<{ key: SortKey, desc: boolean }>({ key: 'presence', desc: true })
+function sortBy(key: SortKey) {
+  sort.value = sort.value.key === key ? { key, desc: !sort.value.desc } : { key, desc: key !== 'name' && key !== 'avgRound' }
+}
+const MIN_PICKS_FOR_WR = 3
+
+const champs = computed(() => {
+  const { key, desc } = sort.value
+  const list = [...(data.value?.meta.champions ?? [])].sort((a, b) => {
+    // Win rate on 1-2 games means nothing: those go last whatever the direction.
+    if (key === 'winRate' || key === 'avgRound' || key === 'blindPct') {
+      const okA = a.picks >= (key === 'winRate' ? MIN_PICKS_FOR_WR : 1)
+      const okB = b.picks >= (key === 'winRate' ? MIN_PICKS_FOR_WR : 1)
+      if (okA !== okB) return okA ? -1 : 1
+    }
+    const diff = key === 'name' ? nameOf(a.champId).localeCompare(nameOf(b.champId)) : a[key] - b[key]
+    return (desc ? -diff : diff) || b.presence - a.presence
+  })
+  return list.slice(0, showAll.value ? undefined : 40)
+})
+const arrow = (key: SortKey) => (sort.value.key === key ? (sort.value.desc ? ' ↓' : ' ↑') : '')
 
 let timer: ReturnType<typeof setInterval> | undefined
 onBeforeUnmount(() => clearInterval(timer))
@@ -74,6 +109,15 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
           rel="noopener noreferrer"
           class="font-medium hover:text-amber-300"
         >{{ t.name }} <span class="text-zinc-500">&#x2197;&#xFE0E;</span></a>
+        <button
+          type="button"
+          class="cursor-pointer rounded-full border px-2 py-0.5 text-[11px]"
+          :class="data?.current === t.name ? 'border-amber-400 bg-amber-400/15 text-amber-300' : 'border-zinc-800 text-zinc-500 hover:text-zinc-200'"
+          :title="data?.current === t.name ? 'Click to unset' : 'The tournament we are playing now'"
+          @click="setCurrent(t.name)"
+        >
+          {{ data?.current === t.name ? '★ Current tournament' : 'Set as current' }}
+        </button>
         <span class="text-xs text-zinc-500">
           {{ t.series }} series · {{ t.games }} drafts
           <template v-if="t.syncedAt"> · synced {{ t.syncedAt.slice(0, 16) }}</template>
@@ -117,25 +161,20 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
         <thead class="text-left text-xs uppercase text-zinc-500">
           <tr>
             <th class="pb-2 font-medium">
-              Champion
+              <button type="button" class="cursor-pointer uppercase hover:text-zinc-200" :class="sort.key === 'name' && 'text-amber-300'" @click="sortBy('name')">
+                Champion{{ arrow('name') }}
+              </button>
             </th>
-            <th class="pb-2 text-right font-medium">
-              Presence
-            </th>
-            <th class="pb-2 text-right font-medium">
-              Picks
-            </th>
-            <th class="pb-2 text-right font-medium">
-              Bans
-            </th>
-            <th class="pb-2 text-right font-medium">
-              WR
-            </th>
-            <th class="pb-2 text-right font-medium" title="Average pick round">
-              Round
-            </th>
-            <th class="pb-2 text-right font-medium" title="Blind pick %">
-              Blind
+            <th v-for="col in COLUMNS" :key="col.key" class="pb-2 text-right font-medium">
+              <button
+                type="button"
+                class="cursor-pointer uppercase hover:text-zinc-200"
+                :class="sort.key === col.key && 'text-amber-300'"
+                :title="col.title ?? `Sort by ${col.label}`"
+                @click="sortBy(col.key)"
+              >
+                {{ col.label }}{{ arrow(col.key) }}
+              </button>
             </th>
           </tr>
         </thead>

@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
 
   const db = useDb()
   const { lastInsertRowid } = db.prepare('INSERT INTO preps (name, opponent) VALUES (?, ?)').run(name, String(body.opponent ?? '').trim())
-  db.prepare('INSERT INTO prep_scenarios (prep_id, name, our_side, slots) VALUES (?, ?, ?, ?)')
-    .run(lastInsertRowid, 'Draft 1', 'blue', JSON.stringify(emptySlots()))
+  db.prepare('INSERT INTO prep_scenarios (prep_id, name, color, our_side, slots) VALUES (?, ?, ?, ?, ?)')
+    .run(lastInsertRowid, 'Draft 1', 'engage', 'blue', JSON.stringify(emptySlots()))
   return { id: Number(lastInsertRowid) }
 })

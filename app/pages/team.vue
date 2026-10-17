@@ -58,6 +58,7 @@ const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID'
       >
         <span class="text-[10px] font-bold text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>
         {{ p.name }}
+        <span v-if="p.status === 'sub'" class="rounded bg-zinc-800 px-1 text-[10px] uppercase text-zinc-400">sub</span>
         <span class="text-xs text-zinc-500">{{ p.pool.filter(e => e.tier !== 'P').length }}</span>
       </button>
       <span v-if="missingRoles.length" class="self-center text-xs text-amber-300/80">

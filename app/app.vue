@@ -14,6 +14,9 @@
         <NuxtLink to="/team" class="hover:text-zinc-100" active-class="text-zinc-100">
           Team
         </NuxtLink>
+        <NuxtLink to="/planning" class="hover:text-zinc-100" active-class="text-zinc-100">
+          Planning
+        </NuxtLink>
         <NuxtLink to="/pro" class="hover:text-zinc-100" active-class="text-zinc-100">
           Pro
         </NuxtLink>

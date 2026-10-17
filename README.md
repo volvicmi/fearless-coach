@@ -32,6 +32,10 @@ Draft prep (Prep tab): preps per opponent, several drafts each, several options 
 choice), drag and drop like the tier lists. Win chance in reviews starts from a data estimate (pro win rates,
 our players' comfort, damage mix) shown factor by factor; the AI may move it by 10 points at most.
 
+Planning tab: each player's usual days (with a time, 21:00 by default) plus per-date exceptions, a week view
+with the starting five's status per day, and an optional weekly Discord summary through a channel webhook
+(checked every 15 minutes while the app runs).
+
 ## What works today
 
 - **Series**: Bo1/Bo3/Bo5, Fearless (a champion picked in an earlier game is locked for both teams) or normal draft.

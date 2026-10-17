@@ -39,7 +39,7 @@ const card = ref<HTMLElement>()
 useChampionDrag(card, (champId: string, target: DropTarget, index?: number) =>
   target === 'remove' ? removeChamp(champId) : setTier(champId, target as Tier, index))
 
-async function updatePlayer(body: Partial<Pick<Player, 'name' | 'role' | 'riotId'>>) {
+async function updatePlayer(body: Partial<Pick<Player, 'name' | 'role' | 'riotId' | 'status'>>) {
   await $fetch(`/api/players/${props.player.id}`, { method: 'PUT', body })
   emit('changed')
 }
@@ -93,6 +93,18 @@ async function removePlayer() {
           {{ r }}
         </option>
       </select>
+      <div class="flex rounded-md bg-zinc-900 p-0.5 text-xs">
+        <button
+          v-for="s in (['starter', 'sub'] as const)"
+          :key="s"
+          type="button"
+          class="cursor-pointer rounded px-2.5 py-1"
+          :class="player.status === s ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-500 hover:text-zinc-200'"
+          @click="player.status !== s && updatePlayer({ status: s })"
+        >
+          {{ s === 'starter' ? 'Starter' : 'Sub' }}
+        </button>
+      </div>
       <input
         :value="player.riotId"
         placeholder="Riot ID (Name#TAG)"
