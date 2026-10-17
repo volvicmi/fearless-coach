@@ -37,14 +37,69 @@ export function useDb(): DatabaseSync {
     CREATE TABLE IF NOT EXISTS pool_entries (
       player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
       champ_id  TEXT NOT NULL,
-      tier      TEXT NOT NULL CHECK (tier IN ('S','A','B','C')),
+      tier      TEXT NOT NULL CHECK (tier IN ('S','A','B','C','P')),
       note      TEXT NOT NULL DEFAULT '',
       PRIMARY KEY (player_id, champ_id)
     );
     -- 'soft' Fearless was dropped: there is only one Fearless rule.
     UPDATE series SET fearless = 'hard' WHERE fearless = 'soft';
+
+    -- Riot API cache: finished matches never change, so they are fetched once.
+    CREATE TABLE IF NOT EXISTS riot_matches (
+      match_id     TEXT PRIMARY KEY,
+      queue_id     INTEGER NOT NULL,
+      played_at    INTEGER NOT NULL,
+      duration_s   INTEGER NOT NULL,
+      participants TEXT NOT NULL
+    );
+    -- One row per (player, ranked game), derived from riot_matches.
+    CREATE TABLE IF NOT EXISTS player_games (
+      puuid          TEXT NOT NULL,
+      match_id       TEXT NOT NULL,
+      queue_id       INTEGER NOT NULL,
+      champ_id       TEXT NOT NULL,
+      role           TEXT,
+      win            INTEGER NOT NULL,
+      kills          INTEGER NOT NULL,
+      deaths         INTEGER NOT NULL,
+      assists        INTEGER NOT NULL,
+      cs             INTEGER NOT NULL,
+      duration_s     INTEGER NOT NULL,
+      played_at      INTEGER NOT NULL,
+      enemy_champ_id TEXT,
+      PRIMARY KEY (puuid, match_id)
+    );
   `)
+  addColumn(db, 'players', 'puuid', "TEXT NOT NULL DEFAULT ''")
+  addColumn(db, 'players', 'soloq_synced_at', 'TEXT')
+  allowPracticeTier(db)
   return db
+}
+
+/** Databases created before the Practice tier have a CHECK without 'P': SQLite can't alter it, so rebuild the table. */
+function allowPracticeTier(db: DatabaseSync) {
+  const { sql } = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'pool_entries'").get() as { sql: string }
+  if (sql.includes("'P'")) return
+  db.exec(`
+    BEGIN;
+    CREATE TABLE pool_entries_new (
+      player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+      champ_id  TEXT NOT NULL,
+      tier      TEXT NOT NULL CHECK (tier IN ('S','A','B','C','P')),
+      note      TEXT NOT NULL DEFAULT '',
+      PRIMARY KEY (player_id, champ_id)
+    );
+    INSERT INTO pool_entries_new (player_id, champ_id, tier, note) SELECT player_id, champ_id, tier, note FROM pool_entries;
+    DROP TABLE pool_entries;
+    ALTER TABLE pool_entries_new RENAME TO pool_entries;
+    COMMIT;
+  `)
+}
+
+/** SQLite has no ADD COLUMN IF NOT EXISTS. */
+function addColumn(db: DatabaseSync, table: string, column: string, definition: string) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+  if (!columns.some(c => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
 }
 
 export function toSeries(row: any): Series {
@@ -71,7 +126,14 @@ export function loadTeam(): Player[] {
     pools.set(e.player_id, list)
   }
   return players
-    .map(p => ({ id: p.id, name: p.name, role: p.role, riotId: p.riot_id, pool: pools.get(p.id) ?? [] }))
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      role: p.role,
+      riotId: p.riot_id,
+      pool: pools.get(p.id) ?? [],
+      soloq: loadSoloq(p.puuid, p.soloq_synced_at),
+    }))
     .sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role) || a.name.localeCompare(b.name))
 }
 

@@ -7,6 +7,8 @@ const props = defineProps<{
   disabled: Map<string, string>
   iconUrl: (id: string) => string
   active: boolean
+  /** Lets champions be dragged onto tier rows (see useChampionDrag) */
+  dragSource?: boolean
 }>()
 const emit = defineEmits<{ select: [id: string] }>()
 
@@ -70,11 +72,15 @@ onMounted(() => input.value?.focus())
         type="button"
         :title="disabled.get(c.id) ? `${c.name} · ${disabled.get(c.id)}` : c.name"
         :disabled="!active || disabled.has(c.id)"
+        :data-drag-champ="dragSource && !disabled.has(c.id) ? c.id : undefined"
         class="group flex flex-col items-center gap-0.5 rounded-md p-0.5 text-center"
-        :class="disabled.has(c.id) ? 'cursor-not-allowed opacity-25 grayscale' : 'hover:bg-zinc-800'"
+        :class="[
+          disabled.has(c.id) ? 'cursor-not-allowed opacity-25 grayscale' : 'hover:bg-zinc-800',
+          dragSource && !disabled.has(c.id) && 'cursor-grab touch-none',
+        ]"
         @click="choose(c.id)"
       >
-        <img :src="iconUrl(c.id)" :alt="c.name" loading="lazy" class="size-12 rounded">
+        <img :src="iconUrl(c.id)" :alt="c.name" loading="lazy" draggable="false" class="size-12 select-none rounded">
         <span class="w-full truncate text-[10px] text-zinc-400 group-hover:text-zinc-200">{{ c.name }}</span>
       </button>
     </div>

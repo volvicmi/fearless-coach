@@ -41,8 +41,8 @@ export interface SeriesDetail {
 export const ROLES = ['top', 'jungle', 'mid', 'adc', 'support'] as const
 export type Role = typeof ROLES[number]
 
-/** S = best comfort, C = situational / pocket pick */
-export const TIERS = ['S', 'A', 'B', 'C'] as const
+/** S = best comfort, C = situational / pocket pick, P = practice (being trained, not ready for official games) */
+export const TIERS = ['S', 'A', 'B', 'C', 'P'] as const
 export type Tier = typeof TIERS[number]
 
 export interface PoolEntry {
@@ -88,11 +88,45 @@ export interface CoachAdvice {
   ms: number
 }
 
+/** One champion in a player's ranked history (SoloQ + Flex). */
+export interface SoloqChamp {
+  champId: string
+  games: number
+  wins: number
+  kills: number
+  deaths: number
+  assists: number
+  csPerMin: number
+  /** Games in the last 30 days */
+  recent: number
+  /** epoch ms */
+  lastPlayed: number
+  /** Most played position on this champion, if Riot reported one */
+  role: Role | null
+}
+
+export interface SoloqSummary {
+  syncedAt: string | null
+  games: number
+  wins: number
+  /** Most played first */
+  champions: SoloqChamp[]
+}
+
 export interface Player {
   id: number
   name: string
   role: Role
-  /** "GameName#TAG", for the Riot API import later */
+  /** "GameName#TAG" */
   riotId: string
   pool: PoolEntry[]
+  /** null until the first Riot sync */
+  soloq: SoloqSummary | null
+}
+
+export interface SyncStatus {
+  state: 'idle' | 'running' | 'done' | 'error'
+  done: number
+  total: number
+  message?: string
 }

@@ -3,7 +3,7 @@ import type { DraftStep, FearlessMode, GameDraft, SeriesFormat } from './draft'
 import { ROLES } from './types'
 import type { Champion, Player, Role, Tier } from './types'
 
-export const TIER_VALUE: Record<Tier, number> = { S: 1, A: 0.75, B: 0.5, C: 0.3 }
+export const TIER_VALUE: Record<Tier, number> = { S: 1, A: 0.75, B: 0.5, C: 0.3, P: 0.1 }
 
 export interface CoachContext {
   game: GameDraft
@@ -84,10 +84,20 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
     const strongLeft = player.pool.filter(e => (e.tier === 'S' || e.tier === 'A') && !blocked.has(e.champId)).length
 
     for (const entry of player.pool) {
-      if (blocked.has(entry.champId)) continue
+      // Practice champions aren't ready for official games.
+      if (entry.tier === 'P' || blocked.has(entry.champId)) continue
       const champ = byId.get(entry.champId)
       let score = TIER_VALUE[entry.tier]
       const reasons = [`${entry.tier} tier for ${player.name}`]
+
+      // Ranked form: only trusted from 5 games, capped so it adjusts the tier instead of replacing it.
+      const ranked = player.soloq?.champions.find(c => c.champId === entry.champId)
+      if (ranked && ranked.games >= 5) {
+        const wr = ranked.wins / ranked.games
+        score += Math.max(-0.1, Math.min(0.1, (wr - 0.5) * 0.5))
+        if (ranked.recent >= 5) score += 0.05
+        reasons.push(`Ranked: ${ranked.games} games, ${Math.round(wr * 100)}% WR${ranked.recent ? `, ${ranked.recent} in 30 days` : ''}`)
+      }
 
       const flexRoles = rolesOf.get(entry.champId)
       if (earlyPick && flexRoles && flexRoles.size > 1) {

@@ -93,12 +93,18 @@ export function coachMode(ctx: CoachContext): { mode: CoachMode, step?: DraftSte
 function teamBlock(team: Player[], nameOf: (id: string) => string): string {
   if (!team.length) return 'OUR TEAM POOLS: none entered yet.'
   const lines = team.map((p) => {
-    const pool = p.pool.length
-      ? p.pool.map(e => `${nameOf(e.champId)} [${e.champId}] ${e.tier}${e.note ? ` (${e.note})` : ''}`).join(', ')
-      : 'empty'
-    return `- ${p.name} (${p.role}): ${pool}`
+    const ready = p.pool.filter(e => e.tier !== 'P')
+    const practice = p.pool.filter(e => e.tier === 'P')
+    const pool = (ready.length
+      ? ready.map(e => `${nameOf(e.champId)} [${e.champId}] ${e.tier}${e.note ? ` (${e.note})` : ''}`).join(', ')
+      : 'empty')
+    + (practice.length ? `; practising (not ready, avoid in official games): ${practice.map(e => nameOf(e.champId)).join(', ')}` : '')
+    const ranked = p.soloq?.champions.slice(0, 10)
+      .map(c => `${nameOf(c.champId)} ${c.games}g ${Math.round((c.wins / c.games) * 100)}%WR KDA ${((c.kills + c.assists) / Math.max(1, c.deaths)).toFixed(1)}${c.recent ? ` (${c.recent} in 30d)` : ''}`)
+      .join(', ')
+    return `- ${p.name} (${p.role}): pool ${pool}${ranked ? `\n  ranked games (last ${p.soloq!.games}): ${ranked}` : ''}`
   })
-  return `OUR TEAM POOLS (tier S = most comfortable):\n${lines.join('\n')}`
+  return `OUR TEAM POOLS (tier S = most comfortable) and recent ranked stats (SoloQ/Flex, small samples are noisy):\n${lines.join('\n')}`
 }
 
 export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {

@@ -21,6 +21,10 @@ With both keys, Gemini is used unless `NUXT_COACH_PROVIDER=claude`. Optional ove
 (comma-separated order), `NUXT_CLAUDE_MODEL`, `NUXT_CLAUDE_EFFORT` (defaults in `nuxt.config.ts`). Without any key, **Copy context**
 puts the full coach prompt in the clipboard to paste into any AI chat.
 
+For ranked stats, add `RIOT_API_KEY` (from https://developer.riotgames.com, development keys expire every 24 h)
+to `.env`, set each player's Riot ID (`Name#TAG`) in the Team tab and click **Sync**. EUW by default
+(`NUXT_RIOT_PLATFORM=euw1`, `NUXT_RIOT_REGION=europe`); the last 60 ranked games are imported, then only new ones.
+
 ## What works today
 
 - **Series**: Bo1/Bo3/Bo5, Fearless (a champion picked in an earlier game is locked for both teams) or normal draft.
@@ -50,7 +54,7 @@ app/components/        ChampionGrid, DraftBoard, DraftSide
 2. ✅ Team pools (players, tiers)
 3. ✅ Scoring engine v1 (pool-based picks)
 4. ✅ Claude co-coach (re-rank + explain, picks and bans)
-5. Riot API import (SoloQ stats per player → pool tiers, matchups)
+5. ✅ Riot API import (ranked stats per player → suggestions and AI coach); next: lane matchups
 6. Scrim history stats from saved games
 7. Opponent scouting (enemy pools → targeted bans)
 8. Pro/meta data import

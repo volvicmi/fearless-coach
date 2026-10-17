@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ROLES, TIERS } from '#shared/types'
-import type { Champion, Player, Tier } from '#shared/types'
+import type { Champion, Player, PoolEntry, Tier } from '#shared/types'
+import type { DropTarget } from '~/composables/useChampionDrag'
 
 const props = defineProps<{
   player: Player
@@ -10,20 +11,34 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ changed: [] }>()
 
-const picking = ref(false)
-const newTier = ref<Tier>('A')
+/** Local copy so a drop shows instantly; resynced whenever the server data comes back. */
+const pool = ref<PoolEntry[]>([...props.player.pool])
+watch(() => props.player.pool, p => (pool.value = [...p]))
 
-const byTier = computed(() =>
-  TIERS.map(tier => ({ tier, entries: props.player.pool.filter(e => e.tier === tier) })))
-
-const inPool = computed(() => new Map(props.player.pool.map(e => [e.champId, `Already ${e.tier} tier`])))
+const byTier = computed(() => TIERS.map(tier => ({ tier, entries: pool.value.filter(e => e.tier === tier) })))
+const inPool = computed(() => new Map(pool.value.map(e => [e.champId, `Already ${e.tier === 'P' ? 'in Practice' : `${e.tier} tier`}`])))
 
 const TIER_STYLE: Record<Tier, string> = {
   S: 'bg-amber-400 text-zinc-950',
   A: 'bg-emerald-500 text-zinc-950',
   B: 'bg-sky-500 text-zinc-950',
-  C: 'bg-zinc-600 text-zinc-100',
+  C: 'bg-zinc-500 text-zinc-950',
+  P: 'bg-violet-500 text-zinc-950',
 }
+const TIER_CAPTION: Record<Tier, string> = {
+  S: 'Best comfort',
+  A: 'Comfortable',
+  B: 'Playable',
+  C: 'Pocket',
+  P: 'Practice',
+}
+
+const tab = ref<'champions' | 'ranked'>('champions')
+const clickTier = ref<Tier>('A')
+
+const card = ref<HTMLElement>()
+useChampionDrag(card, (champId: string, target: DropTarget) =>
+  target === 'remove' ? removeChamp(champId) : setTier(champId, target))
 
 async function updatePlayer(body: Partial<Pick<Player, 'name' | 'role' | 'riotId'>>) {
   await $fetch(`/api/players/${props.player.id}`, { method: 'PUT', body })
@@ -31,16 +46,16 @@ async function updatePlayer(body: Partial<Pick<Player, 'name' | 'role' | 'riotId
 }
 
 async function setTier(champId: string, tier: Tier) {
+  const existing = pool.value.find(e => e.champId === champId)
+  pool.value = existing
+    ? pool.value.map(e => (e.champId === champId ? { ...e, tier } : e))
+    : [...pool.value, { champId, tier, note: '' }]
   await $fetch(`/api/players/${props.player.id}/pool/${champId}`, { method: 'PUT', body: { tier } })
   emit('changed')
 }
 
-/** Click on a pool icon cycles S → A → B → C → S. */
-function cycleTier(champId: string, tier: Tier) {
-  return setTier(champId, TIERS[(TIERS.indexOf(tier) + 1) % TIERS.length]!)
-}
-
 async function removeChamp(champId: string) {
+  pool.value = pool.value.filter(e => e.champId !== champId)
   await $fetch(`/api/players/${props.player.id}/pool/${champId}`, { method: 'DELETE' })
   emit('changed')
 }
@@ -53,16 +68,17 @@ async function removePlayer() {
 </script>
 
 <template>
-  <article class="flex flex-col gap-3 rounded-lg border border-zinc-800 p-4">
-    <div class="flex flex-wrap items-center gap-2">
+  <article ref="card" class="flex flex-col gap-4">
+    <!-- Player info -->
+    <div class="flex flex-wrap items-center gap-3">
       <input
         :value="player.name"
-        class="w-36 rounded-md border border-transparent bg-transparent px-1 font-semibold hover:border-zinc-700 focus:border-amber-400 focus:outline-none"
+        class="w-44 rounded-md border border-transparent bg-transparent px-1 text-lg font-semibold hover:border-zinc-700 focus:border-amber-400 focus:outline-none"
         @change="updatePlayer({ name: ($event.target as HTMLInputElement).value })"
       >
       <select
         :value="player.role"
-        class="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs capitalize"
+        class="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm capitalize"
         @change="updatePlayer({ role: ($event.target as HTMLSelectElement).value as Player['role'] })"
       >
         <option v-for="r in ROLES" :key="r" :value="r">
@@ -72,75 +88,104 @@ async function removePlayer() {
       <input
         :value="player.riotId"
         placeholder="Riot ID (Name#TAG)"
-        class="min-w-0 flex-1 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs"
+        class="w-56 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm"
         @change="updatePlayer({ riotId: ($event.target as HTMLInputElement).value })"
       >
-      <button type="button" class="text-xs text-zinc-500 hover:text-red-400" @click="removePlayer">
-        Remove
+      <button type="button" class="ml-auto text-xs text-zinc-500 hover:text-red-400" @click="removePlayer">
+        Remove player
       </button>
     </div>
 
-    <div class="flex flex-col gap-2">
-      <div v-for="group in byTier" :key="group.tier" class="flex items-start gap-2">
-        <span class="mt-1.5 w-6 rounded text-center text-xs font-bold" :class="TIER_STYLE[group.tier]">{{ group.tier }}</span>
-        <div class="flex min-h-9 flex-1 flex-wrap gap-1">
-          <span v-if="!group.entries.length" class="self-center text-xs text-zinc-600">—</span>
-          <div v-for="e in group.entries" :key="e.champId" class="group relative">
-            <button
-              type="button"
-              :title="`${nameOf(e.champId)} · click to change tier`"
-              @click="cycleTier(e.champId, e.tier)"
-            >
-              <img :src="iconUrl(e.champId)" :alt="nameOf(e.champId)" class="size-9 rounded">
-            </button>
-            <button
-              type="button"
-              class="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full bg-red-600 text-[10px] leading-none group-hover:flex"
-              :title="`Remove ${nameOf(e.champId)}`"
-              @click="removeChamp(e.champId)"
-            >
-              ×
-            </button>
+    <!-- select-none: no blue text selection while dragging champions around -->
+    <div class="grid select-none items-start gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <!-- Tier list -->
+      <div class="flex flex-col gap-2">
+        <div
+          v-for="group in byTier"
+          :key="group.tier"
+          :data-tier-drop="group.tier"
+          class="flex min-h-[88px] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40 transition-colors"
+          :class="group.tier === 'P' && 'mt-3'"
+        >
+          <div class="flex w-20 shrink-0 flex-col items-center justify-center gap-0.5" :class="TIER_STYLE[group.tier]">
+            <span class="font-black leading-none" :class="group.tier === 'P' ? 'text-lg' : 'text-3xl'">
+              {{ group.tier === 'P' ? '⟳' : group.tier }}
+            </span>
+            <span class="text-[10px] font-semibold uppercase tracking-wide opacity-80">{{ TIER_CAPTION[group.tier] }}</span>
+          </div>
+          <div class="flex flex-1 flex-wrap content-start items-start gap-2 p-2">
+            <span v-if="!group.entries.length" class="self-center px-2 text-xs text-zinc-600">
+              {{ group.tier === 'P' ? 'Drop the champions this player is training' : 'Drop champions here' }}
+            </span>
+            <div v-for="e in group.entries" :key="e.champId" class="group relative w-16">
+              <div
+                :data-drag-champ="e.champId"
+                :data-drag-from="e.tier"
+                class="flex cursor-grab touch-none flex-col items-center gap-0.5 rounded-md p-1 hover:bg-zinc-800 active:cursor-grabbing"
+                :title="`${nameOf(e.champId)} · drag to another row, or onto the champion list to remove`"
+              >
+                <img :src="iconUrl(e.champId)" :alt="nameOf(e.champId)" draggable="false" class="size-14 select-none rounded-md">
+                <span class="w-full truncate text-center text-[10px] text-zinc-400">{{ nameOf(e.champId) }}</span>
+              </div>
+              <button
+                type="button"
+                class="absolute right-0 top-0 hidden size-5 items-center justify-center rounded-full bg-zinc-950/90 text-xs text-zinc-300 ring-1 ring-zinc-700 hover:bg-red-600 hover:text-white group-hover:flex"
+                :title="`Remove ${nameOf(e.champId)}`"
+                @click="removeChamp(e.champId)"
+              >
+                ×
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div v-if="picking" class="flex flex-col gap-2 rounded-md border border-zinc-800 p-2">
-      <div class="flex items-center gap-2 text-xs">
-        <span class="text-zinc-400">Add as</span>
-        <button
-          v-for="t in TIERS"
-          :key="t"
-          type="button"
-          class="w-7 rounded py-0.5 font-bold"
-          :class="newTier === t ? TIER_STYLE[t] : 'bg-zinc-900 text-zinc-400'"
-          @click="newTier = t"
-        >
-          {{ t }}
-        </button>
-        <button type="button" class="ml-auto text-zinc-400 hover:text-zinc-100" @click="picking = false">
-          Done
-        </button>
-      </div>
-      <div class="h-72">
-        <ChampionGrid
-          class="h-full"
-          :champions="champions"
-          :disabled="inPool"
-          :icon-url="iconUrl"
-          :active="true"
-          @select="id => setTier(id, newTier)"
-        />
-      </div>
+      <!-- Side panel: also the "remove" drop zone -->
+      <aside data-tier-drop="remove" class="flex flex-col gap-3 rounded-lg border border-zinc-800 p-3 transition-colors xl:sticky xl:top-4 xl:h-[640px]">
+        <div class="flex gap-1 rounded-md bg-zinc-900 p-1 text-sm">
+          <button
+            v-for="t in (['champions', 'ranked'] as const)"
+            :key="t"
+            type="button"
+            class="flex-1 rounded px-3 py-1"
+            :class="tab === t ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'"
+            @click="tab = t"
+          >
+            {{ t === 'champions' ? 'Champions' : `Ranked${player.soloq?.games ? ` (${player.soloq.games})` : ''}` }}
+          </button>
+        </div>
+
+        <template v-if="tab === 'champions'">
+          <div class="flex items-center gap-1.5 text-xs">
+            <span class="text-zinc-400">Click adds as</span>
+            <button
+              v-for="t in TIERS"
+              :key="t"
+              type="button"
+              class="rounded px-2 py-0.5 font-bold"
+              :class="clickTier === t ? TIER_STYLE[t] : 'bg-zinc-900 text-zinc-400'"
+              :title="TIER_CAPTION[t]"
+              @click="clickTier = t"
+            >
+              {{ t === 'P' ? 'Practice' : t }}
+            </button>
+          </div>
+          <ChampionGrid
+            class="min-h-80 flex-1"
+            :champions="champions"
+            :disabled="inPool"
+            :icon-url="iconUrl"
+            :active="true"
+            drag-source
+            @select="id => setTier(id, clickTier)"
+          />
+        </template>
+        <SoloqPanel v-else class="min-h-0 flex-1 overflow-y-auto" :player="player" :icon-url="iconUrl" :name-of="nameOf" @changed="emit('changed')" />
+
+        <p class="text-center text-[11px] text-zinc-600">
+          Drag a champion onto a row to add it · drag it back here to remove it
+        </p>
+      </aside>
     </div>
-    <button
-      v-else
-      type="button"
-      class="self-start rounded-md border border-dashed border-zinc-700 px-3 py-1 text-xs text-zinc-400 hover:text-zinc-100"
-      @click="picking = true"
-    >
-      + Add champions
-    </button>
   </article>
 </template>

@@ -7,15 +7,19 @@ const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (id: string) => byId.value.get(id)?.name ?? id
 
 const form = reactive({ name: '', role: 'top' as Role })
+const selectedId = ref<number | null>(team.value?.[0]?.id ?? null)
+const selected = computed(() => team.value?.find(p => p.id === selectedId.value) ?? team.value?.[0])
 
 async function addPlayer() {
   if (!form.name.trim()) return
-  await $fetch('/api/players', { method: 'POST', body: form })
+  const { id } = await $fetch<{ id: number }>('/api/players', { method: 'POST', body: form })
   form.name = ''
   await refresh()
+  selectedId.value = id
 }
 
 const missingRoles = computed(() => ROLES.filter(r => !team.value?.some(p => p.role === r)))
+const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID', adc: 'ADC', support: 'SUP' }
 </script>
 
 <template>
@@ -26,7 +30,7 @@ const missingRoles = computed(() => ROLES.filter(r => !team.value?.some(p => p.r
           Team
         </h1>
         <p class="text-sm text-zinc-400">
-          Champion pools feed the draft suggestions. Click a champion to change its tier, hover it to remove it.
+          Champion pools feed the draft suggestions and the AI coach. Drag champions between rows to rank them.
         </p>
       </div>
       <form class="ml-auto flex gap-2" @submit.prevent="addPlayer">
@@ -42,20 +46,36 @@ const missingRoles = computed(() => ROLES.filter(r => !team.value?.some(p => p.r
       </form>
     </div>
 
-    <p v-if="missingRoles.length" class="text-sm text-amber-300/80">
-      No player yet for: <span class="capitalize">{{ missingRoles.join(', ') }}</span>
-    </p>
-
-    <div class="grid gap-4 lg:grid-cols-2">
-      <PlayerCard
+    <!-- One tab per player -->
+    <nav v-if="team?.length" class="flex flex-wrap gap-2 border-b border-zinc-800 pb-3">
+      <button
         v-for="p in team"
         :key="p.id"
-        :player="p"
-        :champions="champions"
-        :icon-url="iconUrl"
-        :name-of="nameOf"
-        @changed="refresh"
-      />
-    </div>
+        type="button"
+        class="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm"
+        :class="p.id === selected?.id ? 'border-amber-400 bg-zinc-900 text-zinc-100' : 'border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200'"
+        @click="selectedId = p.id"
+      >
+        <span class="text-[10px] font-bold text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>
+        {{ p.name }}
+        <span class="text-xs text-zinc-500">{{ p.pool.filter(e => e.tier !== 'P').length }}</span>
+      </button>
+      <span v-if="missingRoles.length" class="self-center text-xs text-amber-300/80">
+        Missing: <span class="capitalize">{{ missingRoles.join(', ') }}</span>
+      </span>
+    </nav>
+    <p v-else class="text-sm text-zinc-500">
+      No player yet: add your five players above.
+    </p>
+
+    <PlayerCard
+      v-if="selected"
+      :key="selected.id"
+      :player="selected"
+      :champions="champions"
+      :icon-url="iconUrl"
+      :name-of="nameOf"
+      @changed="refresh"
+    />
   </div>
 </template>

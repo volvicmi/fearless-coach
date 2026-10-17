@@ -12,6 +12,15 @@
           Team
         </NuxtLink>
       </nav>
+      <a
+        href="https://developer.riotgames.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="ml-auto rounded-md border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+        title="Development keys expire every 24 h: regenerate one here, paste it into .env (RIOT_API_KEY) and restart the server"
+      >
+        Riot API key ↗
+      </a>
     </header>
     <main class="mx-auto max-w-[1600px] px-6 py-6">
       <NuxtPage />
