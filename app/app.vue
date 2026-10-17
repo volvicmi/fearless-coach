@@ -12,7 +12,7 @@
           Prep
         </NuxtLink>
         <NuxtLink to="/team" class="hover:text-zinc-100" active-class="text-zinc-100">
-          Équipe
+          Team
         </NuxtLink>
         <NuxtLink to="/planning" class="hover:text-zinc-100" active-class="text-zinc-100">
           Planning
