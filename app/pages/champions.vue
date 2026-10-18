@@ -13,7 +13,7 @@ const ROLES: { id: Role, label: string }[] = [
   { id: 'adc', label: 'ADC' },
   { id: 'support', label: 'Support' },
 ]
-const TIER_STYLE = { S: 'bg-amber-500 text-zinc-950', A: 'bg-emerald-600 text-white', B: 'bg-zinc-600 text-white' }
+const TIER_STYLE = { S: 'bg-amber-500 text-zinc-950', A: 'bg-emerald-600 text-white', B: 'bg-zinc-600 text-white', C: 'bg-zinc-800 text-zinc-300' }
 
 const role = ref<Role | null>(null)
 const criterion = ref<CriterionId | null>(null)

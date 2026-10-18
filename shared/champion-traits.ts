@@ -1,7 +1,7 @@
 import data from './champion-traits.json'
 
-export type Tier = 'S' | 'A' | 'B'
-export const TIERS: Tier[] = ['S', 'A', 'B']
+export type Tier = 'S' | 'A' | 'B' | 'C'
+export const TIERS: Tier[] = ['S', 'A', 'B', 'C']
 
 export const CRITERIA = [
   { id: 'tank', label: 'Tank / frontline', hint: 'Encaisse les dégâts et ouvre l’espace aux autres' },
@@ -16,21 +16,24 @@ export const CRITERIA = [
 ] as const
 export type CriterionId = typeof CRITERIA[number]['id']
 
-const TIER_LISTS = data.tiers as Record<CriterionId, Record<Tier, string[]>>
+const TIER_LISTS = data.tiers as Record<CriterionId, Partial<Record<Tier, string[]>>>
+const listOf = (criterion: CriterionId, t: Tier) => TIER_LISTS[criterion][t] ?? []
+
+/** Un critère n'a pas forcément tous les tiers (C seulement pour l'anti-tank). */
+export const hasTier = (criterion: CriterionId, t: Tier) => listOf(criterion, t).length > 0
 
 /** Tier d'un champion pour un critère, `undefined` s'il n'y figure pas. */
 export function tierOf(criterion: CriterionId, champId: string): Tier | undefined {
-  return TIERS.find(t => TIER_LISTS[criterion][t].includes(champId))
+  return TIERS.find(t => listOf(criterion, t).includes(champId))
 }
 
 /** Rang dans la liste du critère : S avant A avant B, puis l'ordre écrit dans le fichier (meilleur d'abord). */
 export function rankOf(criterion: CriterionId, champId: string): number {
-  const lists = TIER_LISTS[criterion]
   let offset = 0
   for (const t of TIERS) {
-    const i = lists[t].indexOf(champId)
+    const i = listOf(criterion, t).indexOf(champId)
     if (i >= 0) return offset + i
-    offset += lists[t].length
+    offset += listOf(criterion, t).length
   }
   return Number.POSITIVE_INFINITY
 }
