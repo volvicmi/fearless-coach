@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DRAFT_ORDER, NO_BAN, fearlessLocked, otherSide, picksOf, slotsOf } from '#shared/draft'
+import { DRAFT_ORDER, MAX_GAMES, NO_BAN, fearlessLocked, otherSide, seriesScore, slotsOf, winsNeeded } from '#shared/draft'
 import type { Side } from '#shared/draft'
 import { estimateWinRate } from '#shared/winrate'
 import type { CoachContext } from '#shared/coach'
@@ -38,6 +38,7 @@ Judge the DRAFT, not the players' skill. Weigh together:
 - pick order and side: first-pick advantage, what each side could still answer, last-pick counters;
 - bans: used well (threatening picks, a comfort pick denied) or wasted;
 - Fearless: what each player burned or kept for the next games.
+- Series context (Bo3 / Bo5): the score and what is at stake. Weigh how each player spent the shrinking champion pool and what the previous games show (picks, bans, comfort picks already burned). Say it in the verdict when it matters, but still judge this draft first.
 
 Output:
 - winRate: start from the DATA ESTIMATE and move it by at most 10 points for what the data can't see (synergies, matchups, scaling). Blue + red = 100. Never exactly 50-50: pick a winner. winner = the side with the higher winRate.
@@ -65,8 +66,20 @@ export function buildDuelPrompt(ctx: CoachContext): CoachPrompt {
     .map((g) => {
       const p1 = g.ourSide
       const result = g.winner ? `, verdict: ${g.winner === p1 ? 'Joueur 1' : 'Joueur 2'} drafted better` : ''
-      return `Game ${g.n} (Joueur 1 was ${p1}${result}): Joueur 1 picks ${list(g.actions, p1, 'pick')}; Joueur 2 picks ${list(g.actions, otherSide(p1), 'pick')}`
+      return `Game ${g.n} (Joueur 1 was ${p1}${result}): Joueur 1 picks ${list(g.actions, p1, 'pick')}, bans ${list(g.actions, p1, 'ban')}; Joueur 2 picks ${list(g.actions, otherSide(p1), 'pick')}, bans ${list(g.actions, otherSide(p1), 'ban')}`
     })
+
+  // Suivi de la série : score avant cette game, games restantes, champions déjà brûlés.
+  const before = ctx.games.filter(g => g.n < ctx.game.n)
+  const score = seriesScore(ctx.format, before)
+  const needed = winsNeeded(ctx.format)
+  const maxGames = MAX_GAMES[ctx.format]
+  const burned = ctx.fearless === 'off' ? 0 : fearlessLocked(ctx.fearless, ctx.games, ctx.game).size
+  const seriesState = ctx.format === 'Bo1'
+    ? ''
+    : `SERIES: ${ctx.format}, first to ${needed}. Score before this game: Joueur 1 ${score.a} - ${score.b} Joueur 2. Game ${ctx.game.n} of ${maxGames} at most.`
+      + `${score.a === needed - 1 && score.b === needed - 1 ? ' Decisive game.' : score.a === needed - 1 ? ' Joueur 1 is one win from taking the series.' : score.b === needed - 1 ? ' Joueur 2 is one win from taking the series.' : ''}`
+      + `${ctx.fearless === 'off' ? '' : ` ${burned} champions are already burned, so the remaining pool shrinks every game: a draft that spends scarce or flexible champions for little gain costs the next games.`}`
 
   const draft = DRAFT_ORDER.map((s, i) => {
     const champ = ctx.game.actions[i]!
@@ -81,6 +94,7 @@ export function buildDuelPrompt(ctx: CoachContext): CoachPrompt {
 
   const request = [
     `DUEL: ${ctx.format}, ${ctx.fearless === 'off' ? 'normal draft (no Fearless)' : 'Fearless draft'}, game ${ctx.game.n}. Joueur 1 plays ${sideOfP1}, Joueur 2 plays ${otherSide(sideOfP1)}.`,
+    seriesState,
     previous.length ? `PREVIOUS GAMES:\n${previous.join('\n')}` : 'PREVIOUS GAMES: none',
     ctx.fearless === 'off' ? '' : `LOCKED BY FEARLESS (both players): ${locked.join(', ') || 'none'}`,
     `FINAL DRAFT, in order:\n${draft.join('\n')}`,

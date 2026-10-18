@@ -49,6 +49,14 @@ function onKey(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
     e.preventDefault()
     if (props.game.actions.length) undo()
+    return
+  }
+  // Espace = passer le ban, sauf quand on tape dans un champ (recherche, nom…).
+  const el = e.target as HTMLElement | null
+  if (e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey && current.value?.type === 'ban'
+    && !el?.closest('input, textarea, select, [contenteditable="true"]')) {
+    e.preventDefault()
+    if (!e.repeat) play(NO_BAN)
   }
 }
 onMounted(() => window.addEventListener('keydown', onKey))

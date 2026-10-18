@@ -103,8 +103,9 @@ Data Dragon (Riot) : champions et icônes
 
 - **Langue** : interface, messages d'erreur, commentaires et **messages de commit en français**. Noms de variables, fonctions et fichiers en anglais. Les réponses du coach IA sont en français.
 - **Avant un gros module**, résumer ce qui va être fait et les fichiers touchés.
-- **Vérifier** : `npm run typecheck` doit passer, et tout changement d'interface est vérifié dans le navigateur avant d'être annoncé terminé. Les données de test portent le préfixe `[test]` et sont supprimées après.
-- **Tests** : pas encore de tests automatisés ; à ajouter (Vitest) en priorité pour `shared/draft.ts` (ordre, Fearless) et les schémas Zod du coach.
+- **Vérifier** : `npm run typecheck` doit toujours passer (sa sortie est courte, il coûte peu). **Pas de test navigateur systématique** : il coûte cher en tokens. On teste dans le navigateur seulement pour un nouvel écran ou un nouveau parcours, ou quand le coach le demande ; dans ce cas, lire le texte de la page plutôt que prendre des captures, et peu d'appels. Les données de test portent le préfixe `[test]` et sont supprimées après.
+- **Tests** : la logique pure est testée par des tests unitaires (Vitest) écrits par un membre de l'équipe : `shared/draft.ts` (ordre, Fearless, score des séries), les schémas Zod du coach. Ne pas dupliquer ces tests dans le navigateur.
+- **Sobriété en tokens** : réponses courtes, pas de récapitulatif des fichiers modifiés quand le diff suffit, lire seulement les fichiers nécessaires, et proposer `/compact` ou une nouvelle session quand la conversation devient longue.
 - **Secrets** : uniquement dans `.env` (ignoré par git) : `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `RIOT_API_KEY`. Le webhook Discord est stocké en base, jamais renvoyé au navigateur. Aucune clé dans le code ni dans les logs.
 - **Pas de données inventées** : ni stats, ni infos de patch, ni quotas d'API écrits de mémoire. Vérifier dans la doc officielle ou demander.
 - **Demander avant** : ajouter une dépendance, changer de fournisseur IA, migration destructive, déployer, envoyer un message Discord réel.
