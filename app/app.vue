@@ -17,6 +17,9 @@ const draftActive = computed(() => route.path === '/' || route.path.startsWith('
         <NuxtLink to="/prep" class="hover:text-zinc-100" active-class="text-zinc-100">
           Prep
         </NuxtLink>
+        <NuxtLink to="/champions" class="hover:text-zinc-100" active-class="text-zinc-100">
+          Champions
+        </NuxtLink>
         <NuxtLink to="/team" class="hover:text-zinc-100" active-class="text-zinc-100">
           Team
         </NuxtLink>

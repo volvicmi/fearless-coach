@@ -1,0 +1,50 @@
+{
+  "_status": "À VALIDER : classement rédigé de mémoire par Claude (connaissance du jeu, pas des statistiques). Corrige librement : un champion par ligne de tier, ids Data Dragon, du meilleur au moins bon dans un tier.",
+  "tiers": {
+    "tank": {
+      "S": ["Ornn", "Malphite", "Sion", "Maokai", "Zac"],
+      "A": ["Leona", "Nautilus", "Rammus", "Shen", "Chogath", "Sejuani", "Poppy", "Amumu", "Braum", "Alistar"],
+      "B": ["Galio", "Gragas", "TahmKench", "DrMundo", "Volibear", "Skarner", "KSante", "Rell"]
+    },
+    "engage": {
+      "S": ["Malphite", "Leona", "Nautilus", "Amumu", "Sejuani", "Alistar"],
+      "A": ["Rakan", "Zac", "JarvanIV", "Vi", "Hecarim", "MonkeyKing", "Gragas", "Rell", "Galio", "Camille", "Kennen"],
+      "B": ["Diana", "Ekko", "Sion", "Poppy", "Shen", "Nocturne", "Fiddlesticks", "Rammus", "Skarner", "Maokai", "Thresh"]
+    },
+    "poke": {
+      "S": ["Jayce", "Ezreal", "Xerath", "Velkoz", "Ziggs", "Varus"],
+      "A": ["Lux", "Caitlyn", "Zoe", "Corki", "Nidalee", "Hwei", "Jhin", "Karthus"],
+      "B": ["Syndra", "Zyra", "Senna", "Seraphine", "Ashe", "Brand", "Lissandra"]
+    },
+    "scale": {
+      "S": ["Kayle", "Vayne", "Kassadin", "Veigar", "Jinx", "KogMaw", "Aphelios"],
+      "A": ["Nasus", "Cassiopeia", "Azir", "Senna", "Twitch", "Ryze", "Vladimir", "Anivia", "Gangplank", "Smolder"],
+      "B": ["Jax", "Fiora", "Karthus", "Ezreal", "AurelionSol", "Mordekaiser", "Viktor", "Orianna"]
+    },
+    "antitank": {
+      "S": ["Fiora", "Vayne", "KogMaw"],
+      "A": ["Gwen", "Brand", "Kayn", "Vi", "Camille"],
+      "B": ["Jax", "Warwick", "Varus", "Cassiopeia", "Darius", "Garen"]
+    },
+    "waveclear": {
+      "S": ["Sivir", "Anivia", "Malzahar", "Ziggs", "Xerath"],
+      "A": ["Lux", "Cassiopeia", "Syndra", "Veigar", "TwistedFate", "Karthus", "Viktor", "Ryze", "Jinx", "Corki", "Orianna"],
+      "B": ["Heimerdinger", "Brand", "Zyra", "Swain", "Singed", "Aurora"]
+    },
+    "splitpush": {
+      "S": ["Fiora", "Tryndamere", "Camille", "Jax", "Nasus"],
+      "A": ["Yorick", "Gangplank", "Shen", "Teemo", "Gwen", "Irelia", "Trundle", "Singed", "Tristana"],
+      "B": ["Riven", "Darius", "Yone", "MasterYi", "Kayle", "Garen"]
+    },
+    "pick": {
+      "S": ["Blitzcrank", "Thresh", "Pyke", "TwistedFate"],
+      "A": ["Ahri", "Morgana", "Nautilus", "Lux", "Evelynn", "Nidalee", "Ashe", "Varus"],
+      "B": ["Veigar", "Zoe", "Rengar", "Khazix", "Neeko", "Leblanc", "Elise"]
+    },
+    "peel": {
+      "S": ["Lulu", "Janna", "Braum", "Taric"],
+      "A": ["Alistar", "Rakan", "Nami", "Soraka", "Poppy", "Thresh", "Renata", "Milio", "Yuumi"],
+      "B": ["Zilean", "Sona", "Morgana", "TahmKench", "Shen", "Rell"]
+    }
+  }
+}
