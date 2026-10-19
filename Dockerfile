@@ -2,9 +2,14 @@ FROM node:24-bookworm-slim
 
 WORKDIR /app
 
-# Dependencies and build (npm ci runs `nuxt prepare`, so the whole source is needed first)
+# Dependencies first: this layer stays cached while package*.json don't change.
+# --ignore-scripts skips `nuxt prepare` here, the build below does the same work.
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+
+# Then the source and the build
 COPY . .
-RUN npm ci && npm run build
+RUN npm run build
 
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
