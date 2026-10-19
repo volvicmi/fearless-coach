@@ -88,7 +88,10 @@ function whenOf(createdAt: string) {
   return new Date(`${createdAt.replace(' ', 'T')}Z`).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
-const fresh = computed(() => viewIndex.value === null && !!result.value && resultAt.value === props.ctx.game.actions.length)
+/** The answer on screen is for the draft as it is now (same number of picks and bans): its buttons work, live or from history. */
+const fresh = computed(() => (viewed.value
+  ? viewed.value.stepIndex === props.ctx.game.actions.length
+  : !!result.value && resultAt.value === props.ctx.game.actions.length))
 const advice = computed(() => (shown.value && shown.value.kind !== 'review' ? shown.value : null))
 const review = computed(() => (shown.value?.kind === 'review' ? shown.value : null))
 
