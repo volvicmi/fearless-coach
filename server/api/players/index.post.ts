@@ -1,4 +1,5 @@
 import { ROLES } from '#shared/types'
+import { publishChange } from '../../utils/live'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event) ?? {}
@@ -9,5 +10,6 @@ export default defineEventHandler(async (event) => {
   const { lastInsertRowid } = useDb()
     .prepare('INSERT INTO players (name, role, riot_id) VALUES (?, ?, ?)')
     .run(name, body.role, String(body.riotId ?? '').trim())
+  publishChange('team')
   return { id: Number(lastInsertRowid) }
 })

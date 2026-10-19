@@ -1,4 +1,5 @@
 import { ROLES } from '#shared/types'
+import { publishChange } from '../../../utils/live'
 
 export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
@@ -21,5 +22,6 @@ export default defineEventHandler(async (event) => {
   if (body.riotId !== undefined) {
     db.prepare('UPDATE players SET riot_id = ? WHERE id = ?').run(String(body.riotId).trim(), id)
   }
+  publishChange('team')
   return { ok: true }
 })

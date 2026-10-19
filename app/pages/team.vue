@@ -3,6 +3,8 @@ import { ROLES } from '#shared/types'
 import type { Player, Role } from '#shared/types'
 
 const { data: team, refresh } = await useFetch<Player[]>('/api/team')
+// Another browser changed the team: reload it (see server/utils/live.ts)
+useLive('team', () => refresh())
 const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (id: string) => byId.value.get(id)?.name ?? id
 

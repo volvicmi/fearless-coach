@@ -1,4 +1,5 @@
 import { TIERS } from '#shared/types'
+import { publishChange } from '../../../../utils/live'
 
 /**
  * Adds a champion to a player's pool, or moves it: `{ tier, index?, note? }`.
@@ -21,6 +22,7 @@ export default defineEventHandler(async (event) => {
   const db = useDb()
   if (trainOnly) {
     db.prepare('UPDATE pool_entries SET train = ? WHERE player_id = ? AND champ_id = ?').run(body.train ? 1 : 0, playerId, champId)
+    publishChange('team')
     return { ok: true }
   }
   db.exec('BEGIN')
@@ -47,5 +49,6 @@ export default defineEventHandler(async (event) => {
     db.exec('ROLLBACK')
     throw err
   }
+  publishChange('team')
   return { ok: true }
 })
