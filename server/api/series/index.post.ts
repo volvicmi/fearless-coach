@@ -1,4 +1,5 @@
 import { MAX_GAMES } from '#shared/draft'
+import { publishChange } from '../../utils/live'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
@@ -30,6 +31,7 @@ export default defineEventHandler(async (event) => {
     .prepare('INSERT INTO series (name, opponent, format, fearless, mode, player_a, player_b) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(name, opponent, format, fearless, mode, playerA, playerB)
   db.prepare('INSERT INTO games (series_id, n, our_side) VALUES (?, 1, ?)').run(lastInsertRowid, ourSide)
+  publishChange('series')
 
   return { id: Number(lastInsertRowid) }
 })

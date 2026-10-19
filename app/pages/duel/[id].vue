@@ -14,6 +14,8 @@ if (data.value.series.mode !== 'duel') await navigateTo(`/series/${id}`, { repla
 const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (champ: string) => byId.value.get(champ)?.name ?? champ
 const { patchGame, saved } = useGameSave(data, refresh)
+// The other player (or another browser) changed the draft: reload it
+useLive('series', () => refresh())
 
 const series = computed(() => data.value!.series)
 const games = computed(() => data.value!.games)

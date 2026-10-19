@@ -12,6 +12,8 @@ if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Série int
 // Un duel a sa propre page : pas de coach IA, un verdict à la fin.
 if (data.value.series.mode === 'duel') await navigateTo(`/duel/${id}`, { replace: true })
 const { patchGame } = useGameSave(data, refresh)
+// Draft changed in another browser: reload the series (see server/utils/live.ts)
+useLive('series', () => refresh())
 
 const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (champ: string) => byId.value.get(champ)?.name ?? champ

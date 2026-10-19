@@ -1,5 +1,6 @@
 import { MAX_GAMES } from '#shared/draft'
 import type { SeriesFormat } from '#shared/draft'
+import { publishChange } from '../../../utils/live'
 
 /** Starts the next game of a series. */
 export default defineEventHandler(async (event) => {
@@ -17,5 +18,6 @@ export default defineEventHandler(async (event) => {
   const { lastInsertRowid } = db
     .prepare('INSERT INTO games (series_id, n, our_side) VALUES (?, ?, ?)')
     .run(seriesId, last + 1, ourSide)
+  publishChange('series')
   return toGame(db.prepare('SELECT * FROM games WHERE id = ?').get(lastInsertRowid))
 })

@@ -2,6 +2,7 @@
 import type { Series, SeriesMode } from '#shared/types'
 
 const { data: series, refresh } = await useFetch<Series[]>('/api/series')
+useLive('series', () => refresh())
 
 // Le formulaire est ouvert d'office tant qu'il n'y a aucune série.
 const creating = ref(!series.value?.length)

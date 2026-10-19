@@ -1,4 +1,5 @@
 import { DRAFT_ORDER, NO_BAN } from '#shared/draft'
+import { publishChange } from '../../utils/live'
 
 /** Partial update of a game: `actions`, `winner` (or null) and/or `ourSide`. */
 export default defineEventHandler(async (event) => {
@@ -29,5 +30,6 @@ export default defineEventHandler(async (event) => {
 
   const row = db.prepare('SELECT * FROM games WHERE id = ?').get(id)
   if (!row) throw createError({ statusCode: 404, statusMessage: 'Game introuvable' })
+  publishChange('series')
   return toGame(row)
 })
