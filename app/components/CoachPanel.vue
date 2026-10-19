@@ -83,6 +83,12 @@ function browse(delta: number) {
   if (next < 0) viewIndex.value = null
   else if (next < history.value.length) viewIndex.value = next
 }
+/** One chip per step that has a saved answer, pointing at its newest answer (`i` = index in history). */
+const stepChips = computed(() => {
+  const newest = new Map<number, number>()
+  history.value.forEach((r, i) => { if (!newest.has(r.stepIndex)) newest.set(r.stepIndex, i) })
+  return [...newest].sort((a, b) => a[0] - b[0]).map(([stepIndex, i]) => ({ stepIndex, i }))
+})
 function whenOf(createdAt: string) {
   // SQLite stores UTC without a marker: add it so the browser shows local time.
   return new Date(`${createdAt.replace(' ', 'T')}Z`).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
@@ -219,6 +225,21 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
         </span>
         <button type="button" class="cursor-pointer px-1 hover:text-zinc-100 disabled:cursor-default disabled:opacity-30" :disabled="viewIndex === null" title="Conseil suivant" @click="browse(-1)">
           Plus récent ›
+        </button>
+      </div>
+
+      <!-- One chip per draft step that has a saved answer: jump straight to it (É18 = step 18) -->
+      <div v-if="stepChips.length" class="flex flex-wrap gap-1 text-xs">
+        <button
+          v-for="c in stepChips"
+          :key="c.stepIndex"
+          type="button"
+          class="cursor-pointer rounded px-2 py-0.5"
+          :class="viewed?.stepIndex === c.stepIndex ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'"
+          :title="`Conseils de l’étape ${c.stepIndex + 1}`"
+          @click="viewIndex = c.i"
+        >
+          É{{ c.stepIndex + 1 }}
         </button>
       </div>
 

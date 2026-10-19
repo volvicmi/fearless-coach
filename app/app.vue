@@ -6,7 +6,7 @@ const draftActive = computed(() => route.path === '/' || route.path.startsWith('
 
 <template>
   <div class="flex min-h-screen flex-col">
-    <header class="flex items-center gap-6 border-b border-zinc-800 px-6 py-3">
+    <header class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-zinc-800 px-4 py-3 md:px-6">
       <NuxtLink to="/" class="font-semibold tracking-wide">
         Fearless <span class="text-amber-400">Coach</span>
       </NuxtLink>
@@ -31,6 +31,9 @@ const draftActive = computed(() => route.path === '/' || route.path.startsWith('
         </NuxtLink>
         <NuxtLink to="/notes" class="hover:text-zinc-100" active-class="text-zinc-100">
           Notes
+        </NuxtLink>
+        <NuxtLink to="/plan" class="hover:text-zinc-100" active-class="text-zinc-100">
+          Plan
         </NuxtLink>
       </nav>
       <a
