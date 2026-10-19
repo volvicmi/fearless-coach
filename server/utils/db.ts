@@ -183,6 +183,9 @@ export function useDb(): DatabaseSync {
   // Order inside a tier: 0 = leftmost = strongest of the tier.
   addColumn(db, 'pool_entries', 'position', 'INTEGER NOT NULL DEFAULT 0')
   addColumn(db, 'pool_entries', 'train', 'INTEGER NOT NULL DEFAULT 0')
+  // Duel seats: a token per player (A / B), '' while the seat is free. The names stay in series.player_a / player_b.
+  addColumn(db, 'series', 'seat_a_token', "TEXT NOT NULL DEFAULT ''")
+  addColumn(db, 'series', 'seat_b_token', "TEXT NOT NULL DEFAULT ''")
   // Mode duel : deux joueurs face à face. Les séries existantes restent en mode équipe.
   addColumn(db, 'series', 'mode', "TEXT NOT NULL DEFAULT 'team'")
   addColumn(db, 'series', 'player_a', "TEXT NOT NULL DEFAULT ''")

@@ -13,7 +13,7 @@ export function useGameSave(data: Ref<SeriesDetail | null | undefined>, refresh:
     const next = { ...g, ...body, ...local }
     data.value = { ...data.value!, games: data.value!.games.map(x => (x.id === g.id ? next : x)) }
     queue = queue
-      .then(() => $fetch(`/api/games/${g.id}`, { method: 'PUT', body }))
+      .then(() => $fetch(`/api/games/${g.id}`, { method: 'PUT', body, headers: duelHeaders(g.seriesId) }))
       .catch(() => refresh()) // le serveur a refusé : on reprend ce qui est réellement enregistré
   }
 

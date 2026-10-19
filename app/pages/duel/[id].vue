@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DRAFT_ORDER, MAX_GAMES, otherSide, picksOf, seriesScore } from '#shared/draft'
+// duelHeaders / saveDuelToken come from app/composables/duelSeat.ts (auto-imported)
 import type { Side } from '#shared/draft'
 import type { DuelVerdict, Game, SeriesDetail } from '#shared/types'
 
@@ -14,8 +15,72 @@ if (data.value.series.mode !== 'duel') await navigateTo(`/series/${id}`, { repla
 const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (champ: string) => byId.value.get(champ)?.name ?? champ
 const { patchGame, saved } = useGameSave(data, refresh)
-// The other player (or another browser) changed the draft: reload it
-useLive('series', () => refresh())
+
+// --- Sièges : chaque navigateur est le joueur A, le joueur B, ou un spectateur (jeton dans localStorage) ---
+interface SeatInfo { mySeat: 'a' | 'b' | null, a: { name: string, taken: boolean }, b: { name: string, taken: boolean } }
+const seats = ref<SeatInfo | null>(null)
+const spectating = ref(false)
+const claimName = ref('')
+const claimError = ref('')
+const myName = ref('')
+
+async function loadSeats() {
+  seats.value = await $fetch<SeatInfo>(`/api/duel/${id}/seats`, { headers: duelHeaders(id) })
+  if (seats.value.mySeat) myName.value = seats.value[seats.value.mySeat].name
+}
+onMounted(() => {
+  spectating.value = localStorage.getItem(`duel-spectate-${id}`) === '1'
+  loadSeats()
+})
+// The other player (or another browser) changed the draft or a seat: reload (see server/utils/live.ts)
+useLive('series', () => {
+  refresh()
+  loadSeats()
+})
+
+const mySeat = computed(() => seats.value?.mySeat ?? null)
+const showSeatPopup = computed(() => !!seats.value && !mySeat.value && !spectating.value)
+/** Side this browser plays in the current game (null for a spectator). */
+const mySide = computed<Side | null>(() => {
+  const g = game.value
+  if (!g || !mySeat.value) return null
+  return mySeat.value === 'a' ? g.ourSide : otherSide(g.ourSide)
+})
+/** Side whose turn it is (the next step of the draft). */
+const sideToAct = computed<Side | null>(() => DRAFT_ORDER[game.value?.actions.length ?? 0]?.side ?? null)
+const canPlay = computed(() => !!mySide.value && sideToAct.value === mySide.value)
+
+async function claimSeat(seat: 'a' | 'b') {
+  claimError.value = ''
+  try {
+    const { token } = await $fetch<{ token: string }>(`/api/duel/${id}/claim`, {
+      method: 'POST',
+      body: { seat, name: claimName.value.trim() || seats.value![seat].name },
+    })
+    saveDuelToken(id, token)
+    localStorage.removeItem(`duel-spectate-${id}`)
+    await loadSeats()
+  }
+  catch (e: any) {
+    claimError.value = e?.data?.statusMessage ?? 'Impossible de prendre ce siège'
+    await loadSeats()
+  }
+}
+function watchOnly() {
+  localStorage.setItem(`duel-spectate-${id}`, '1')
+  spectating.value = true
+}
+function takeSeat() {
+  localStorage.removeItem(`duel-spectate-${id}`)
+  spectating.value = false
+}
+async function rename() {
+  const name = myName.value.trim()
+  if (!name || !mySeat.value) return
+  await $fetch(`/api/duel/${id}/name`, { method: 'PUT', body: { name }, headers: duelHeaders(id) })
+  await refresh()
+  await loadSeats()
+}
 
 const series = computed(() => data.value!.series)
 const games = computed(() => data.value!.games)
@@ -112,6 +177,10 @@ watch(
         <h1 class="mt-1 truncate text-2xl font-semibold">
           {{ series.name }}
         </h1>
+        <label v-if="mySeat" class="mt-2 flex items-center gap-2 text-sm text-zinc-400">
+          Tu es
+          <input v-model="myName" maxlength="30" class="w-40 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100" @change="rename">
+        </label>
       </div>
       <div class="ml-auto flex items-center gap-4" aria-label="Score de la série">
         <span class="font-semibold text-amber-300">{{ series.playerA }}</span>
@@ -119,6 +188,57 @@ watch(
         <span class="font-semibold text-violet-300">{{ series.playerB }}</span>
       </div>
     </header>
+
+    <!-- Popup : choisir son siège (ou regarder) avant de draft -->
+    <div v-if="showSeatPopup && seats" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div class="flex w-full max-w-md flex-col gap-4 rounded-xl border border-zinc-700 bg-zinc-900 p-5">
+        <h2 class="text-lg font-semibold">
+          Qui es-tu dans ce duel ?
+        </h2>
+        <label class="flex flex-col gap-1 text-sm text-zinc-400">
+          Ton nom
+          <input v-model="claimName" maxlength="30" class="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100">
+        </label>
+        <div class="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            :disabled="seats.a.taken"
+            class="cursor-pointer rounded-lg border border-amber-400/50 px-4 py-3 text-left hover:bg-amber-400/10 disabled:cursor-default disabled:opacity-40"
+            @click="claimSeat('a')"
+          >
+            <span class="block font-semibold text-amber-300">{{ seats.a.name }}</span>
+            <span class="text-xs text-zinc-400">{{ seats.a.taken ? 'Déjà pris' : 'Joueur A · choisit le côté' }}</span>
+          </button>
+          <button
+            type="button"
+            :disabled="seats.b.taken"
+            class="cursor-pointer rounded-lg border border-violet-400/50 px-4 py-3 text-left hover:bg-violet-400/10 disabled:cursor-default disabled:opacity-40"
+            @click="claimSeat('b')"
+          >
+            <span class="block font-semibold text-violet-300">{{ seats.b.name }}</span>
+            <span class="text-xs text-zinc-400">{{ seats.b.taken ? 'Déjà pris' : 'Joueur B · prend l’autre côté' }}</span>
+          </button>
+        </div>
+        <p v-if="claimError" class="text-sm text-red-400" role="alert">
+          {{ claimError }}
+        </p>
+        <button type="button" class="cursor-pointer self-end text-sm text-zinc-400 hover:text-zinc-100" @click="watchOnly">
+          Regarder seulement
+        </button>
+      </div>
+    </div>
+
+    <div v-if="seats && !mySeat && spectating" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-300">
+      <span>Tu regardes ce duel : lecture seule.</span>
+      <button v-if="!seats.a.taken || !seats.b.taken" type="button" class="cursor-pointer rounded-md border border-zinc-600 px-3 py-1 hover:bg-zinc-800" @click="takeSeat">
+        Prendre un siège
+      </button>
+    </div>
+
+    <p v-if="mySeat && sideToAct" class="text-sm text-zinc-400">
+      Au tour du côté <span class="font-semibold text-zinc-100">{{ sideToAct === 'blue' ? 'Bleu' : 'Rouge' }}</span>
+      <span v-if="canPlay" class="text-amber-300"> · c’est ton tour</span>
+    </p>
 
     <div v-if="score.winner" class="rounded-xl border border-amber-400/40 bg-amber-400/5 px-4 py-3 text-sm">
       <span class="font-semibold text-amber-300">Série terminée</span>
@@ -154,7 +274,7 @@ watch(
 
     <template v-if="game">
       <!-- Les côtés se choisissent avant le premier ban -->
-      <div v-if="!started" class="flex flex-wrap items-center gap-3 text-sm">
+      <div v-if="!started" class="flex flex-wrap items-center gap-3 text-sm" :class="mySeat !== 'a' && 'pointer-events-none opacity-60'">
         <span><span class="font-medium text-amber-300">{{ series.playerA }}</span> joue</span>
         <SegmentedControl
           :model-value="game.ourSide"
@@ -164,6 +284,7 @@ watch(
         <span class="text-zinc-500">· <span class="text-violet-300">{{ series.playerB }}</span> prend l’autre côté</span>
       </div>
 
+      <div :class="(mySeat === null || (!canPlay && !complete)) && 'pointer-events-none opacity-70'">
       <DraftBoard
         :key="game.id"
         :game="game"
@@ -176,6 +297,7 @@ watch(
         :confirm-undo="game.verdict ? 'Annuler un pick efface le verdict de l’IA : il faudra le redemander. Continuer ?' : undefined"
         @update="actions => patchGame(game!, { actions }, { winner: null, verdict: null })"
       />
+      </div>
 
       <!-- Fin de draft : l'IA départage -->
       <section v-if="complete" aria-live="polite" class="flex flex-col gap-3">

@@ -1,11 +1,32 @@
 import { DRAFT_ORDER, NO_BAN } from '#shared/draft'
+import type { Side } from '#shared/draft'
 import { publishChange } from '../../utils/live'
+import { seatOf, sideOfSeat } from '../../utils/duel-seats'
 
 /** Partial update of a game: `actions`, `winner` (or null) and/or `ourSide`. */
 export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
   const body = await readBody(event) ?? {}
   const db = useDb()
+
+  // Duel: a seat plays only its own side, only seat A picks the sides, and spectators change nothing.
+  const owner = db.prepare('SELECT g.series_id, g.our_side, g.actions, s.mode FROM games g JOIN series s ON s.id = g.series_id WHERE g.id = ?')
+    .get(id) as { series_id: number, our_side: Side, actions: string, mode: string } | undefined
+  if (owner?.mode === 'duel') {
+    const seat = seatOf(event, owner.series_id)
+    if (!seat) throw createError({ statusCode: 403, statusMessage: 'Spectateur : tu ne peux pas modifier ce duel' })
+    if (body.ourSide !== undefined && seat !== 'a') throw createError({ statusCode: 403, statusMessage: 'Seul le joueur A choisit les côtés' })
+    if (Array.isArray(body.actions)) {
+      const mine = sideOfSeat(seat, (body.ourSide ?? owner.our_side) as Side)
+      const before = JSON.parse(owner.actions) as string[]
+      const len = Math.max(before.length, body.actions.length)
+      for (let i = 0; i < len; i++) {
+        if (body.actions[i] !== before[i] && DRAFT_ORDER[i]?.side !== mine) {
+          throw createError({ statusCode: 403, statusMessage: 'Ce coup n’est pas dans ton côté' })
+        }
+      }
+    }
+  }
 
   if (body.actions !== undefined) {
     const ok = Array.isArray(body.actions)
