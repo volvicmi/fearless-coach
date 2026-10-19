@@ -109,7 +109,7 @@ Data Dragon (Riot) : champions et icônes
 - **Secrets** : uniquement dans `.env` (ignoré par git) : `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `RIOT_API_KEY`. Le webhook Discord est stocké en base, jamais renvoyé au navigateur. Aucune clé dans le code ni dans les logs.
 - **Pas de données inventées** : ni stats, ni infos de patch, ni quotas d'API écrits de mémoire. Vérifier dans la doc officielle ou demander.
 - **Demander avant** : ajouter une dépendance, changer de fournisseur IA, migration destructive, déployer, envoyer un message Discord réel.
-- **Git** : commits petits et clairs, en français, en local. Ne pas pousser ni déployer sans accord.
+- **Git** : commits petits et clairs, en français, en local. Ne pas pousser ni déployer sans accord. **Chaque `git commit` et `git push` doit être validé par le coach avant exécution** (règle `ask` dans `.claude/settings.json`) : un push part directement en production (redéploiement automatique Coolify).
 
 ## 9. Mise en ligne (à venir)
 
