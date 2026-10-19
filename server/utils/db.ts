@@ -93,6 +93,15 @@ export function useDb(): DatabaseSync {
       value TEXT NOT NULL
     );
 
+    -- Every answer of the coach, kept with the draft step it was given for (history in the panel).
+    CREATE TABLE IF NOT EXISTS coach_advice (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      game_id    INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+      step_index INTEGER NOT NULL,
+      result     TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     -- Pro data from gol.gg (see server/utils/pro.ts).
     CREATE TABLE IF NOT EXISTS pro_tournaments (
       name      TEXT PRIMARY KEY,

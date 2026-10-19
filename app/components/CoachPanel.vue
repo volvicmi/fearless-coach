@@ -29,6 +29,7 @@ const auto = ref(false)
 onMounted(() => {
   try { auto.value = localStorage.getItem('coach-auto') === '1' }
   catch {}
+  loadHistory()
 })
 watch(auto, (on) => {
   try { localStorage.setItem('coach-auto', on ? '1' : '0') }
@@ -45,6 +46,8 @@ async function ask() {
     if (props.ctx.game.actions.length === at) { // ignore answers that arrive after the next click
       result.value = res
       resultAt.value = at
+      viewIndex.value = null
+      await loadHistory()
     }
   }
   catch (e: any) {
@@ -62,9 +65,32 @@ function maybeAutoAsk() {
 }
 watch(() => props.ctx.game.actions.length, maybeAutoAsk)
 
-const fresh = computed(() => !!result.value && resultAt.value === props.ctx.game.actions.length)
-const advice = computed(() => (result.value && result.value.kind !== 'review' ? result.value : null))
-const review = computed(() => (result.value?.kind === 'review' ? result.value : null))
+/** Saved answers of this game, newest first. Browsing them never changes the draft. */
+interface AdviceRecord { id: number, stepIndex: number, createdAt: string, result: CoachResult }
+const history = ref<AdviceRecord[]>([])
+/** Index in `history` being looked at (0 = newest saved), null = the live answer. */
+const viewIndex = ref<number | null>(null)
+const viewed = computed(() => (viewIndex.value === null ? null : history.value[viewIndex.value] ?? null))
+const shown = computed(() => viewed.value?.result ?? result.value)
+
+async function loadHistory() {
+  try { history.value = await $fetch<AdviceRecord[]>(`/api/games/${props.gameId}/advice`) }
+  catch {}
+}
+/** delta +1 = older answer, -1 = newer; back past the newest returns to the live answer. */
+function browse(delta: number) {
+  const next = (viewIndex.value ?? -1) + delta
+  if (next < 0) viewIndex.value = null
+  else if (next < history.value.length) viewIndex.value = next
+}
+function whenOf(createdAt: string) {
+  // SQLite stores UTC without a marker: add it so the browser shows local time.
+  return new Date(`${createdAt.replace(' ', 'T')}Z`).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+const fresh = computed(() => viewIndex.value === null && !!result.value && resultAt.value === props.ctx.game.actions.length)
+const advice = computed(() => (shown.value && shown.value.kind !== 'review' ? shown.value : null))
+const review = computed(() => (shown.value?.kind === 'review' ? shown.value : null))
 
 const copied = ref(false)
 /** Free fallback: copy the whole coach prompt to paste into any AI chat. */
@@ -178,6 +204,20 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
       <p v-else-if="!result && !loading" class="text-xs text-zinc-500">
         {{ IDLE_HINT[mode] }}
       </p>
+
+      <!-- History: browse the coach's earlier answers without touching the draft -->
+      <div v-if="history.length" class="flex items-center justify-between gap-2 text-xs text-zinc-400">
+        <button type="button" class="cursor-pointer px-1 hover:text-zinc-100 disabled:cursor-default disabled:opacity-30" :disabled="viewIndex === history.length - 1" title="Conseil précédent" @click="browse(1)">
+          ‹ Plus ancien
+        </button>
+        <span class="text-center">
+          <template v-if="viewed">Conseil du {{ whenOf(viewed.createdAt) }} · étape {{ viewed.stepIndex + 1 }}</template>
+          <template v-else>Conseil en direct</template>
+        </span>
+        <button type="button" class="cursor-pointer px-1 hover:text-zinc-100 disabled:cursor-default disabled:opacity-30" :disabled="viewIndex === null" title="Conseil suivant" @click="browse(-1)">
+          Plus récent ›
+        </button>
+      </div>
 
       <!-- Our turn: advice / their turn: prediction -->
       <div v-if="advice" class="flex flex-col gap-2" :class="!fresh && 'opacity-40'">
