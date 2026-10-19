@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs'
 import { DatabaseSync } from 'node:sqlite'
 import { ROLES } from '#shared/types'
 import type { Game, Player, PoolEntry, Series } from '#shared/types'
+import traitsSeed from '#shared/champion-traits.json'
 
 let db: DatabaseSync | undefined
 
@@ -93,6 +94,15 @@ export function useDb(): DatabaseSync {
       value TEXT NOT NULL
     );
 
+    -- Tier lists of the Champions page: one row per champion and criterion.
+    CREATE TABLE IF NOT EXISTS trait_entries (
+      criterion TEXT NOT NULL,
+      champ_id  TEXT NOT NULL,
+      tier      TEXT NOT NULL CHECK (tier IN ('S','A','B','C')),
+      position  INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (criterion, champ_id)
+    );
+
     -- Every answer of the coach, kept with the draft step it was given for (history in the panel).
     CREATE TABLE IF NOT EXISTS coach_advice (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -179,7 +189,21 @@ export function useDb(): DatabaseSync {
   addColumn(db, 'series', 'player_b', "TEXT NOT NULL DEFAULT ''")
   // Verdict de l'IA (JSON) d'une draft de duel terminée.
   addColumn(db, 'games', 'verdict', 'TEXT')
+  seedTraits(db)
   return db
+}
+
+/** First start only: the Champions lists come from shared/champion-traits.json, then live in the database. */
+function seedTraits(db: DatabaseSync) {
+  const { n } = db.prepare('SELECT COUNT(*) AS n FROM trait_entries').get() as { n: number }
+  if (n > 0) return
+  const insert = db.prepare('INSERT OR IGNORE INTO trait_entries (criterion, champ_id, tier, position) VALUES (?, ?, ?, ?)')
+  const tiers = traitsSeed.tiers as Record<string, Record<string, string[]>>
+  for (const [criterion, byTier] of Object.entries(tiers)) {
+    for (const [tier, champs] of Object.entries(byTier)) {
+      champs.forEach((champId, position) => insert.run(criterion, champId, tier, position))
+    }
+  }
 }
 
 export function getSetting(key: string): string {

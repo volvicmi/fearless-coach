@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { CHAMPION_ROLES } from '#shared/champion-roles'
-import { CRITERIA, TIERS, TRAITS_STATUS, sortChampions, tierOf } from '#shared/champion-traits'
-import type { CriterionId } from '#shared/champion-traits'
+import { CRITERIA, TIERS } from '#shared/champion-traits'
+import type { CriterionId, Tier } from '#shared/champion-traits'
 import type { Role } from '#shared/types'
+import type { DropTarget } from '~/composables/useChampionDrag'
 
-const { champions, iconUrl } = await useChampions()
+interface TraitEntry { criterion: CriterionId, champId: string, tier: Tier, position: number }
+
+const { champions, byId, iconUrl } = await useChampions()
+const nameOf = (id: string) => byId.value.get(id)?.name ?? id
+const { data: entries, refresh } = await useFetch<TraitEntry[]>('/api/traits')
+// Another browser changed a list: reload it (see server/utils/live.ts)
+useLive('traits', () => refresh())
 
 const ROLES: { id: Role, label: string }[] = [
   { id: 'top', label: 'Top' },
@@ -13,39 +20,73 @@ const ROLES: { id: Role, label: string }[] = [
   { id: 'adc', label: 'ADC' },
   { id: 'support', label: 'Support' },
 ]
-const TIER_STYLE = { S: 'bg-amber-500 text-zinc-950', A: 'bg-emerald-600 text-white', B: 'bg-zinc-600 text-white', C: 'bg-zinc-800 text-zinc-300' }
+const TIER_STYLE: Record<Tier, string> = {
+  S: 'bg-amber-500 text-zinc-950',
+  A: 'bg-emerald-600 text-white',
+  B: 'bg-zinc-600 text-white',
+  C: 'bg-zinc-800 text-zinc-300',
+}
 
 const role = ref<Role | null>(null)
 const criterion = ref<CriterionId | null>(null)
 const search = ref('')
+const board = ref<HTMLElement>()
 
-const rows = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  const pool = champions.value.filter(c =>
-    (!role.value || CHAMPION_ROLES[c.id]?.includes(role.value)) && (!q || c.name.toLowerCase().includes(q)))
-  return sortChampions(pool, criterion.value)
-})
 const hint = computed(() => CRITERIA.find(c => c.id === criterion.value)?.hint)
+/** Champions that can fill the chosen role (all of them without a role). */
+const pickable = computed(() => champions.value.filter(c => !role.value || CHAMPION_ROLES[c.id]?.includes(role.value)))
+
+/** Without a criterion: plain alphabetical list. */
+const alphabetical = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  return pickable.value
+    .filter(c => !q || c.name.toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+/** With a criterion: the three rows of the list, best first inside each row. */
+const byTier = computed(() => TIERS.map(tier => ({
+  tier,
+  entries: (entries.value ?? [])
+    .filter(e => e.criterion === criterion.value && e.tier === tier)
+    .sort((a, b) => a.position - b.position),
+})))
+/** Champions already in this list: the grid greys them out. */
+const placed = computed(() => new Map(
+  (entries.value ?? [])
+    .filter(e => e.criterion === criterion.value)
+    .map(e => [e.champId, `Déjà en tier ${e.tier}`]),
+))
+
+async function setTier(champId: string, tier: Tier, index?: number) {
+  if (!criterion.value) return
+  await $fetch(`/api/traits/${criterion.value}/${champId}`, { method: 'PUT', body: { tier, index } })
+  await refresh()
+}
+
+async function removeChamp(champId: string) {
+  if (!criterion.value) return
+  await $fetch(`/api/traits/${criterion.value}/${champId}`, { method: 'DELETE' })
+  await refresh()
+}
+
+useChampionDrag(board, (champId: string, target: DropTarget, index?: number) =>
+  target === 'remove' ? removeChamp(champId) : setTier(champId, target as Tier, index))
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
+  <div ref="board" class="flex flex-col gap-4 select-none">
     <div>
       <h1 class="text-xl font-semibold">
         Champions
       </h1>
       <p class="text-sm text-zinc-400">
-        Filtre par rôle, trie par ordre alphabétique ou par les meilleurs dans un domaine.
+        Choisis un domaine pour classer les champions en tiers S / A / B / C. Glisse-les, ajoute-les depuis la grille, retire-les en les lâchant sur la grille.
       </p>
     </div>
 
-    <p class="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-      {{ TRAITS_STATUS }}
-    </p>
-
     <div class="flex flex-wrap items-center gap-2 text-sm">
-      <input v-model="search" type="search" placeholder="Chercher…" class="w-44 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5">
-      <span class="ml-3 text-zinc-400">Rôle</span>
+      <span class="text-zinc-400">Rôle</span>
       <button
         v-for="r in [{ id: null, label: 'Tous' }, ...ROLES]"
         :key="String(r.id)"
@@ -59,9 +100,9 @@ const hint = computed(() => CRITERIA.find(c => c.id === criterion.value)?.hint)
     </div>
 
     <div class="flex flex-wrap items-center gap-2 text-sm">
-      <span class="text-zinc-400">Trier</span>
+      <span class="text-zinc-400">Domaine</span>
       <button
-        v-for="c in [{ id: null, label: 'A → Z' }, ...CRITERIA]"
+        v-for="c in [{ id: null, label: 'Aucun (A → Z)' }, ...CRITERIA]"
         :key="String(c.id)"
         type="button"
         class="cursor-pointer rounded-md px-3 py-1"
@@ -72,25 +113,71 @@ const hint = computed(() => CRITERIA.find(c => c.id === criterion.value)?.hint)
       </button>
     </div>
     <p v-if="hint" class="text-xs text-zinc-500">
-      {{ hint }} · {{ rows.length }} champions
+      {{ hint }}
     </p>
 
-    <template v-if="criterion">
-      <section v-for="t in TIERS" :key="t" class="flex items-start gap-3">
-        <span class="flex h-12 w-10 shrink-0 items-center justify-center rounded-md text-lg font-bold" :class="TIER_STYLE[t]">{{ t }}</span>
-        <div class="flex flex-wrap gap-2">
-          <div v-for="c in rows.filter(r => tierOf(criterion!, r.id) === t)" :key="c.id" class="flex w-16 flex-col items-center gap-1" :title="c.name">
-            <img :src="iconUrl(c.id)" :alt="c.name" class="h-12 w-12 rounded-md">
-            <span class="w-full truncate text-center text-[11px] text-zinc-300">{{ c.name }}</span>
+    <!-- With a criterion: editable tier list, same behaviour as the Team tab -->
+    <div v-if="criterion" class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div class="flex flex-col gap-2">
+        <div
+          v-for="g in byTier"
+          :key="g.tier"
+          :data-tier-drop="g.tier"
+          class="flex min-h-[72px] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40 transition-colors"
+        >
+          <div class="flex w-16 shrink-0 items-center justify-center text-2xl font-black" :class="TIER_STYLE[g.tier]">
+            {{ g.tier }}
           </div>
-          <span v-if="!rows.some(r => tierOf(criterion!, r.id) === t)" class="py-3 text-xs text-zinc-600">Aucun champion</span>
+          <div data-tier-items class="flex flex-1 flex-wrap content-start items-start gap-2 p-2">
+            <span v-if="!g.entries.length" class="self-center px-2 text-xs text-zinc-600">Dépose des champions ici</span>
+            <div v-for="e in g.entries" :key="e.champId" class="group relative w-16">
+              <div
+                :data-drag-champ="e.champId"
+                :data-drag-from="g.tier"
+                class="flex cursor-grab touch-none flex-col items-center gap-0.5 rounded-md p-1 hover:bg-zinc-800 active:cursor-grabbing"
+                :title="`${nameOf(e.champId)} · glisse pour réordonner (à gauche = le plus fort)`"
+              >
+                <img :src="iconUrl(e.champId)" :alt="nameOf(e.champId)" draggable="false" class="size-12 select-none rounded-md">
+                <span class="w-full truncate text-center text-[10px] text-zinc-400">{{ nameOf(e.champId) }}</span>
+              </div>
+              <button
+                type="button"
+                class="absolute -right-1 -top-1 hidden size-5 cursor-pointer place-items-center rounded-full bg-zinc-950 text-xs leading-none text-zinc-400 shadow ring-1 ring-zinc-700 hover:bg-red-600 hover:text-white group-hover:grid"
+                :title="`Retirer ${nameOf(e.champId)}`"
+                @click="removeChamp(e.champId)"
+              >
+                ×
+              </button>
+            </div>
+          </div>
         </div>
-      </section>
-    </template>
-    <div v-else class="flex flex-wrap gap-2">
-      <div v-for="c in rows" :key="c.id" class="flex w-16 flex-col items-center gap-1" :title="c.name">
-        <img :src="iconUrl(c.id)" :alt="c.name" class="h-12 w-12 rounded-md">
-        <span class="w-full truncate text-center text-[11px] text-zinc-300">{{ c.name }}</span>
+      </div>
+
+      <!-- Side panel: add from here, and the "remove" drop zone -->
+      <aside data-tier-drop="remove" class="flex flex-col gap-2 rounded-lg border border-zinc-800 p-3 transition-colors">
+        <ChampionGrid
+          class="min-h-80 flex-1"
+          :champions="pickable"
+          :disabled="placed"
+          :icon-url="iconUrl"
+          :active="true"
+          drag-source
+          @select="id => setTier(id, 'B')"
+        />
+        <p class="text-center text-[11px] text-zinc-600">
+          Clic ou Entrée ajoute en B · glisse sur une ligne pour placer · lâche ici pour retirer
+        </p>
+      </aside>
+    </div>
+
+    <!-- Without a criterion: plain list -->
+    <div v-else class="flex flex-col gap-3">
+      <input v-model="search" type="search" placeholder="Chercher…" class="w-44 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm">
+      <div class="flex flex-wrap gap-2">
+        <div v-for="c in alphabetical" :key="c.id" class="flex w-16 flex-col items-center gap-1" :title="c.name">
+          <img :src="iconUrl(c.id)" :alt="c.name" class="h-12 w-12 rounded-md">
+          <span class="w-full truncate text-center text-[11px] text-zinc-300">{{ c.name }}</span>
+        </div>
       </div>
     </div>
   </div>

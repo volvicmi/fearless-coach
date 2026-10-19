@@ -1,5 +1,4 @@
-import data from './champion-traits.json'
-
+/** Tiers used by every criterion list (S = best). The lists themselves live in the database (table `trait_entries`). */
 export type Tier = 'S' | 'A' | 'B' | 'C'
 export const TIERS: Tier[] = ['S', 'A', 'B', 'C']
 
@@ -15,37 +14,3 @@ export const CRITERIA = [
   { id: 'peel', label: 'Peel', hint: 'Protège le carry des assassins et des engages' },
 ] as const
 export type CriterionId = typeof CRITERIA[number]['id']
-
-const TIER_LISTS = data.tiers as Record<CriterionId, Partial<Record<Tier, string[]>>>
-const listOf = (criterion: CriterionId, t: Tier) => TIER_LISTS[criterion][t] ?? []
-
-/** Un critère n'a pas forcément tous les tiers (C seulement pour l'anti-tank). */
-export const hasTier = (criterion: CriterionId, t: Tier) => listOf(criterion, t).length > 0
-
-/** Tier d'un champion pour un critère, `undefined` s'il n'y figure pas. */
-export function tierOf(criterion: CriterionId, champId: string): Tier | undefined {
-  return TIERS.find(t => listOf(criterion, t).includes(champId))
-}
-
-/** Rang dans la liste du critère : S avant A avant B, puis l'ordre écrit dans le fichier (meilleur d'abord). */
-export function rankOf(criterion: CriterionId, champId: string): number {
-  let offset = 0
-  for (const t of TIERS) {
-    const i = listOf(criterion, t).indexOf(champId)
-    if (i >= 0) return offset + i
-    offset += listOf(criterion, t).length
-  }
-  return Number.POSITIVE_INFINITY
-}
-
-/**
- * Filtre (critère retenu = présent dans sa tier list) puis trie : alphabétique sans critère,
- * du meilleur au moins bon dans le critère sinon.
- */
-export function sortChampions<T extends { id: string, name: string }>(champs: T[], criterion: CriterionId | null): T[] {
-  const list = criterion ? champs.filter(c => tierOf(criterion, c.id)) : [...champs]
-  return list.sort((a, b) =>
-    (criterion ? rankOf(criterion, a.id) - rankOf(criterion, b.id) : 0) || a.name.localeCompare(b.name))
-}
-
-export const TRAITS_STATUS: string = data._status
