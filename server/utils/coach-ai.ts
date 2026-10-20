@@ -23,10 +23,20 @@ function pickProvider(): Provider {
 }
 
 /** Appelle le fournisseur d'IA choisi (Gemini ou Claude) et renvoie une réponse validée par le schéma. */
-export function askAi<S extends z.ZodType>(prompt: CoachPrompt, schema: S, provider?: Provider) {
+export async function askAi<S extends z.ZodType>(prompt: CoachPrompt, schema: S, provider?: Provider) {
   const chosen = provider ?? pickProvider()
   if (chosen === 'openrouter') return askOpenRouter(prompt, schema)
-  return chosen === 'gemini' ? askGemini(prompt, schema) : askClaude(prompt, schema)
+  if (chosen === 'claude') return askClaude(prompt, schema)
+  try {
+    return await askGemini(prompt, schema)
+  }
+  catch (err) {
+    // Choix automatique : si Gemini est surchargé ou à court de quota, un modèle gratuit OpenRouter prend le relais (s'il est configuré).
+    const status = (err as { statusCode?: number }).statusCode
+    const fallback = !provider && !!process.env.OPENROUTER_API_KEY && !!useRuntimeConfig().openrouterModel
+    if (fallback && (status === 429 || status === 502 || status === 503)) return askOpenRouter(prompt, schema)
+    throw err
+  }
 }
 
 /** Advice on our turn, prediction on theirs, full review once the draft is complete. */

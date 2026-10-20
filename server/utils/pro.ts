@@ -1,5 +1,5 @@
 import { ofetch } from 'ofetch'
-import { DRAFT_ORDER, NO_BAN } from '#shared/draft'
+import { DRAFT_ORDER, NO_BAN, slotsOf } from '#shared/draft'
 import type { Side } from '#shared/draft'
 import type { Champion, ProChampStat, ProDraft, ProMeta, ProTournament, SyncStatus } from '#shared/types'
 
@@ -215,6 +215,23 @@ export function loadProMeta(): ProMeta {
     }))
     .sort((a, b) => b.presence - a.presence || b.picks - a.picks)
   return { games, champions }
+}
+
+/**
+ * Pro drafts closest to a matchup: our champions on one side and theirs on the other (either way round)
+ * score highest, then recency. Falls back to the latest drafts when nothing is on the board.
+ */
+export function loadProMatchups(ours: string[], theirs: string[], limit = 8): ProDraft[] {
+  const o = new Set(ours)
+  const t = new Set(theirs)
+  if (!o.size && !t.size) return loadProDrafts([], limit)
+  const count = (g: ProDraft, side: Side, set: Set<string>) => slotsOf(g.actions, side, 'pick').filter(c => !!c && set.has(c)).length
+  return loadProDrafts([], 100000)
+    .map(g => ({ g, s: Math.max(count(g, 'blue', o) + count(g, 'red', t), count(g, 'red', o) + count(g, 'blue', t)) }))
+    .filter(x => x.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, limit)
+    .map(x => x.g)
 }
 
 /** Recent pro drafts, those sharing the most champions with `onBoard` first. */

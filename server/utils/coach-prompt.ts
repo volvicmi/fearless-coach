@@ -5,9 +5,10 @@ import { DRAFT_ORDER, NO_BAN, fearlessLocked, otherSide, picksOf, slotsOf } from
 import type { DraftStep, FearlessMode, SeriesFormat, Side } from '#shared/draft'
 import { assignRoles, canFillAnyRole, freeRolesOf, stepLabel, suggestPicks, unavailableNow } from '#shared/coach'
 import { estimateWinRate } from '#shared/winrate'
+import { CRITERIA } from '#shared/champion-traits'
 import type { CoachContext } from '#shared/coach'
 import type { CoachAdvice, CoachMode, CoachReview, Combo, Player, ProDraft, ProMeta } from '#shared/types'
-import { loadProDrafts, loadProMeta } from './pro'
+import { loadProMatchups, loadProMeta } from './pro'
 import { loadPreparedDrafts } from './prep'
 import type { PreparedDraft } from './prep'
 import { loadCombos } from './combos'
@@ -55,10 +56,10 @@ export const COACH_SYSTEM_PROMPT = `You are the draft coach of a competitive Lea
 
 How Fearless works: any champion picked in an earlier game of the series (by either team) is locked for both teams for the rest of the series. Bans never carry over between games.
 
-You get several sources. Weigh them all together, none of them overrides the others:
-- the whole champion pool of the game (the AVAILABLE list), not only our players' pools;
-- our players' tier lists (strongest first, also inside each tier) and their recent ranked stats;
-- the pro meta (presence, win rate, pick round in LCK/LEC) and real pro drafts that were actually played;
+The DRAFT comes first. Reason from the two compositions on the board: what each side is building, what it lacks, what counters it, which win condition each one has, damage mix, engage and disengage, frontline, scaling, pick order and side. Then use the other sources to refine the choice, never to replace that reasoning:
+- the whole champion pool of the game (the AVAILABLE list), not only our players' pools: the best answer to the draft is often not in a pool;
+- our players' tier lists (strongest first, also inside each tier) and their recent ranked stats: a feasibility check and a tiebreaker between draft-equivalent options, not the starting point;
+- the pro meta (presence, win rate, pick round in LCK/LEC) and real pro drafts that were actually played. Use those drafts as precedents for comp against comp: look at what pro teams drafted into a similar composition, what won, and explain WHY they chose that answer (the synergy, the counter, the win condition, the damage or engage it provided). Reason from the drafts and your game knowledge only; never invent statistics;
 - the coach notes written by our staff (combos, usual answers, patch remarks): useful knowledge, to weigh like the rest;
 - our practised combos (a champion and the partners it is played with, e.g. a bot lane carry and its supports): when one side of a combo is picked, its partners are natural follow-ups;
 - our prepared drafts (staff plans, with backup options per step, some prepared against this exact opponent): say when the live draft follows or leaves a plan, and suggest the planned option when it still fits;
@@ -69,10 +70,10 @@ Each request ends with a TASK. There are three kinds of task.
 ADVICE (our turn): give the best options for the step we must play.
 - Only use champions from the AVAILABLE list. Write each champion as its Data Dragon id exactly as listed. Name the player who would play a pick.
 - Think about the draft as a whole: what composition we are building, how the pick synergises with our picks already locked (engage + follow-up, bot lane duo, jungle-mid 2v2, wombo combos), what it does against their picks, damage mix, engage/disengage, scaling vs early power, flex picks that hide roles.
-- Comfort matters but is not everything: a strong meta or synergy pick a player can play (pool, ranked games) can beat a comfort pick that doesn't fit the comp.
+- Start from what the draft needs (missing roles, missing damage type, frontline, engage, answers to their threats), list the champions that fit it, then check which of them our players can play. Recommend a pick outside every pool when the draft clearly calls for it, and say the player would need to practise it. Never recommend a champion just because it sits in a pool.
 - Fearless economy: avoid burning a player's last comfort picks early in a long series; remember which strong champions the enemy has already lost.
 - Bans: target what threatens the comp we are building, what the enemy has shown comfort on, and the strongest available meta picks.
-- The engine shortlist is a fast heuristic, not the answer: re-rank it and look beyond it.
+- The pool hints are a fast, pool-based heuristic: ignore them when the draft points elsewhere.
 - In plan, explain the idea behind the draft: the comp identity, how our picks work together, and what to look for next.
 
 PREDICTION (their turn): predict what the enemy will most likely pick or ban at this step.
@@ -140,7 +141,7 @@ function teamBlock(team: Player[], nameOf: (id: string) => string): string {
     const pool = ready.length
       ? ready.map(e => `${nameOf(e.champId)} [${e.champId}] ${e.tier}${e.train ? ' (à travailler en priorité)' : ''}${e.note ? ` (${e.note})` : ''}`).join(', ')
       : 'empty'
-    const ranked = p.soloq?.champions.slice(0, 10)
+    const ranked = p.soloq?.champions.slice(0, 5)
       .map(c => `${nameOf(c.champId)} ${c.games}g ${Math.round((c.wins / c.games) * 100)}%WR KDA ${((c.kills + c.assists) / Math.max(1, c.deaths)).toFixed(1)}${c.recent ? ` (${c.recent} in 30d)` : ''}`)
       .join(', ')
     const queues = p.soloq ? ` (${p.soloq.solo.games} SoloQ, ${p.soloq.flex.games} Flex)` : ''
@@ -197,7 +198,7 @@ function notesBlock(): string {
 export function proMetaBlock(meta: ProMeta | undefined, nameOf: (id: string) => string): string {
   if (!meta?.games) return ''
   const pct = (x: number) => Math.round(x * 100)
-  const lines = meta.champions.slice(0, 40).map(c =>
+  const lines = meta.champions.slice(0, 15).map(c =>
     `${nameOf(c.champId)}: ${pct(c.presence)}% presence (${c.picks} picks, ${c.bans} bans), ${c.picks ? `${pct(c.winRate)}% WR` : 'never picked'}, avg pick round ${c.avgRound}, ${c.blindPct}% blind`)
   return `PRO META (${meta.games} pro games, LCK/LEC, most present first):\n${lines.join('\n')}`
 }
@@ -210,7 +211,17 @@ export function proDraftsBlock(drafts: ProDraft[], nameOf: (id: string) => strin
     `${d.tournament} (patch ${d.patch}) ${d.blueTeam} blue${d.winner === 'blue' ? ' WON' : ''} vs ${d.redTeam} red${d.winner === 'red' ? ' WON' : ''}`
     + ` | bans blue: ${list(d.actions, 'blue', 'ban')}; red: ${list(d.actions, 'red', 'ban')}`
     + ` | picks blue (in order): ${list(d.actions, 'blue', 'pick')}; red: ${list(d.actions, 'red', 'pick')}`)
-  return `REAL PRO DRAFTS sharing champions with this draft (or the latest ones):\n${lines.join('\n')}`
+  return `REAL PRO DRAFTS closest to this matchup (our champions against theirs on opposite sides first, or the latest ones):\n${lines.join('\n')}`
+}
+
+/** Champions tagged S, A or B per domain in the Champions tab (editable by the team, never statistics). */
+function loadTraitTags(): Map<string, Set<string>> {
+  const rows = useDb()
+    .prepare("SELECT criterion, champ_id FROM trait_entries WHERE tier IN ('S', 'A', 'B')")
+    .all() as { criterion: string, champ_id: string }[]
+  const byCriterion = new Map<string, Set<string>>()
+  for (const r of rows) byCriterion.set(r.criterion, (byCriterion.get(r.criterion) ?? new Set()).add(r.champ_id))
+  return byCriterion
 }
 
 export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
@@ -243,8 +254,21 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
   const fitsTheirRoles = (id: string) => mode !== 'prediction' || canFillAnyRole(id, theirFree)
   const available = ctx.champions.filter(c => !blocked.has(c.id) && fitsTheirRoles(c.id)).map(c => c.id)
   const shortlist = mode === 'advice'
-    ? suggestPicks(ctx, 8).map(s => `${s.champId} -> ${s.player} (${s.role}, ${s.tier}), score ${s.score.toFixed(2)}: ${s.reasons.join('; ')}`)
+    ? suggestPicks(ctx, 4).map(s => `${s.champId} -> ${s.player} (${s.role}, ${s.tier}), score ${s.score.toFixed(2)}: ${s.reasons.join('; ')}`)
     : []
+
+  const traits = loadTraitTags()
+  const compLine = (side: Side) => {
+    const picks = picksOf(ctx.game.actions, side)
+    const covered: string[] = []
+    const missing: string[] = []
+    for (const c of CRITERIA) {
+      const champs = picks.filter(id => traits.get(c.id)?.has(id))
+      if (champs.length) covered.push(`${c.label}: ${champs.map(nameOf).join(', ')}`)
+      else missing.push(c.label)
+    }
+    return `${side === us ? 'OUR' : 'THEIR'} COMP READ (tags from our Champions tab, approximate): ${covered.join(' | ') || 'nothing yet'}. Not covered: ${missing.join(', ')}.`
+  }
 
   const estimate = mode === 'review' ? estimateWinRate(ctx) : null
   const task = mode === 'review'
@@ -260,10 +284,12 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
     `CURRENT DRAFT:\n${draft.length ? draft.join('\n') : '(draft not started)'}`,
     `OUR PICKS (${us}): ${picksText(us)}`,
     `THEIR PICKS (${them}): ${picksText(them)}`,
+    compLine(us),
+    compLine(them),
     mode === 'prediction' ? `THEIR FREE ROLES (still to fill): ${theirFree.join(', ') || 'none'}. Only predict champions that can play one of these roles.` : '',
     preparedDraftsBlock(loadPreparedDrafts(ctx.opponent), ctx.opponent, nameOf),
-    proDraftsBlock(loadProDrafts(ctx.game.actions.filter(a => a !== NO_BAN), 10), nameOf),
-    shortlist.length ? `ENGINE SHORTLIST:\n${shortlist.join('\n')}` : '',
+    proDraftsBlock(loadProMatchups(picksOf(ctx.game.actions, us), picksOf(ctx.game.actions, them), 8), nameOf),
+    shortlist.length ? `POOL HINTS (secondary, pool-based):\n${shortlist.join('\n')}` : '',
     mode === 'review' ? '' : `AVAILABLE for this step: ${available.join(', ')}`,
     task,
   ].filter(Boolean).join('\n\n')
