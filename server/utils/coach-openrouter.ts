@@ -38,7 +38,10 @@ export async function askOpenRouter<S extends z.ZodType>(prompt: CoachPrompt, sc
   const text = body.choices?.[0]?.message?.content ?? ''
   let raw: z.infer<S>
   try {
-    raw = schema.parse(JSON.parse(text))
+    // Many free models wrap the JSON in ```json fences or add a sentence around it: keep the object only.
+    const start = text.indexOf('{')
+    const end = text.lastIndexOf('}')
+    raw = schema.parse(JSON.parse(text.slice(start, end + 1)))
   }
   catch {
     throw createError({ statusCode: 502, statusMessage: `${openrouterModel} a renvoyé une réponse illisible, réessaie ou change de modèle` })
