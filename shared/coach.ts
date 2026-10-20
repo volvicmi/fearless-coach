@@ -19,6 +19,8 @@ export interface CoachContext {
   combos?: Combo[]
   /** Opponent of the series, to find the drafts prepared against them */
   opponent?: string
+  /** « Draft seule » : ni pools, ni combos, ni drafts préparées envoyés à l'IA, elle ne raisonne que sur la draft */
+  draftOnly?: boolean
 }
 
 /** Champions that form a practised combo with `champ`. */

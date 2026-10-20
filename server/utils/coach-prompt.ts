@@ -110,7 +110,7 @@ export function contextBlock(): string {
 }
 
 /** Loads everything the coach needs for one game. */
-export async function loadCoachContext(gameId: number): Promise<CoachContext> {
+export async function loadCoachContext(gameId: number, draftOnly = false): Promise<CoachContext> {
   const db = useDb()
   const gameRow = db.prepare('SELECT * FROM games WHERE id = ?').get(gameId)
   if (!gameRow) throw createError({ statusCode: 404, statusMessage: 'Game introuvable' })
@@ -121,8 +121,8 @@ export async function loadCoachContext(gameId: number): Promise<CoachContext> {
   const games = (db.prepare('SELECT * FROM games WHERE series_id = ? ORDER BY n').all(game.seriesId) as any[]).map(toGame)
   const { champions } = await getChampions()
   return {
-    game, games, fearless: series.fearless, format: series.format, team: loadTeam(), champions,
-    pro: loadProMeta(), combos: loadCombos(), opponent: series.opponent,
+    game, games, fearless: series.fearless, format: series.format, team: draftOnly ? [] : loadTeam(), champions,
+    pro: loadProMeta(), combos: draftOnly ? [] : loadCombos(), opponent: series.opponent, draftOnly,
   }
 }
 
@@ -287,7 +287,8 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
     compLine(us),
     compLine(them),
     mode === 'prediction' ? `THEIR FREE ROLES (still to fill): ${theirFree.join(', ') || 'none'}. Only predict champions that can play one of these roles.` : '',
-    preparedDraftsBlock(loadPreparedDrafts(ctx.opponent), ctx.opponent, nameOf),
+    ctx.draftOnly ? '' : preparedDraftsBlock(loadPreparedDrafts(ctx.opponent), ctx.opponent, nameOf),
+    ctx.draftOnly ? 'DRAFT ONLY MODE: no player pools, combos or prepared drafts are given. Recommend purely from the draft (both compositions, counters, synergies, pro precedents) and set player to null.' : '',
     proDraftsBlock(loadProMatchups(picksOf(ctx.game.actions, us), picksOf(ctx.game.actions, them), 8), nameOf),
     shortlist.length ? `POOL HINTS (secondary, pool-based):\n${shortlist.join('\n')}` : '',
     mode === 'review' ? '' : `AVAILABLE for this step: ${available.join(', ')}`,
@@ -295,7 +296,7 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
   ].filter(Boolean).join('\n\n')
 
   // Pools, pro meta and notes change rarely: they form the cached part of the prompt.
-  const team = [teamBlock(ctx.team, nameOf), combosBlock(ctx.combos, nameOf), proMetaBlock(ctx.pro, nameOf), notesBlock()].filter(Boolean).join('\n\n')
+  const team = [ctx.draftOnly ? '' : teamBlock(ctx.team, nameOf), combosBlock(ctx.combos, nameOf), proMetaBlock(ctx.pro, nameOf), notesBlock()].filter(Boolean).join('\n\n')
   const system = [COACH_SYSTEM_PROMPT, contextBlock()].filter(Boolean).join('\n\n')
   return { mode, system, team, request }
 }

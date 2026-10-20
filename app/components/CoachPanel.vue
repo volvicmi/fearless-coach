@@ -25,15 +25,24 @@ const resultAt = ref(-1)
 const loading = ref(false)
 /** Which AI answers: auto (server's choice) or one provider, to compare answers. Each answer shows its model. */
 const provider = ref<'auto' | 'gemini' | 'claude' | 'openrouter'>('auto')
-const providerBody = () => ({ gameId: props.gameId, provider: provider.value === 'auto' ? undefined : provider.value })
+/** « Draft seule » : l'IA ne reçoit ni pools ni combos, seulement la draft (réglage retenu dans le navigateur) */
+const draftOnly = ref(true)
+const providerBody = () => ({ gameId: props.gameId, provider: provider.value === 'auto' ? undefined : provider.value, draftOnly: draftOnly.value })
 const error = ref('')
 const auto = ref(false)
 
 onMounted(() => {
-  try { auto.value = localStorage.getItem('coach-auto') === '1' }
+  try {
+    auto.value = localStorage.getItem('coach-auto') === '1'
+    draftOnly.value = localStorage.getItem('coach-draft-only') !== '0'
+  }
   catch {}
   loadHistory()
   loadPlan()
+})
+watch(draftOnly, (on) => {
+  try { localStorage.setItem('coach-draft-only', on ? '1' : '0') }
+  catch {}
 })
 watch(auto, (on) => {
   try { localStorage.setItem('coach-auto', on ? '1' : '0') }
@@ -130,7 +139,7 @@ const copied = ref(false)
 async function copyContext() {
   error.value = ''
   try {
-    const { text } = await $fetch<{ text: string }>('/api/coach/prompt', { method: 'POST', body: { gameId: props.gameId } })
+    const { text } = await $fetch<{ text: string }>('/api/coach/prompt', { method: 'POST', body: { gameId: props.gameId, draftOnly: draftOnly.value } })
     await navigator.clipboard.writeText(text)
     copied.value = true
     setTimeout(() => (copied.value = false), 2000)
@@ -216,6 +225,10 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
         <label class="flex items-center gap-1.5 text-xs text-zinc-400" title="Demande automatiquement à nos tours et pour l’analyse finale">
           <input v-model="auto" type="checkbox" class="accent-amber-400">
           Auto
+        </label>
+        <label class="flex items-center gap-1.5 text-xs text-zinc-400" title="L’IA ne reçoit ni pools ni combos : elle conseille uniquement d’après la draft (comps, contres, synergies, drafts pro)">
+          <input v-model="draftOnly" type="checkbox" class="accent-amber-400">
+          Draft seule
         </label>
         <button
           type="button"

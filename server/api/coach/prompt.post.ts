@@ -6,7 +6,7 @@ const ANSWER_FORMAT = {
 
 /** The full coach prompt as plain text, to paste into any free AI chat: `{ gameId }`. */
 export default defineEventHandler(async (event) => {
-  const { gameId } = await readBody(event) ?? {}
-  const prompt = buildCoachPrompt(await loadCoachContext(Number(gameId)))
+  const { gameId, draftOnly } = await readBody(event) ?? {}
+  const prompt = buildCoachPrompt(await loadCoachContext(Number(gameId), draftOnly === true))
   return { text: [prompt.system, prompt.team, prompt.request, ANSWER_FORMAT[prompt.mode]].join('\n\n') }
 })
