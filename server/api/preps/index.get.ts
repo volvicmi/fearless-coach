@@ -10,7 +10,7 @@ export default defineEventHandler(() => {
     return {
       ...p,
       scenarioCount: own.length,
-      scenarios: own.map(({ id, name, color, ourSide, slots }) => ({ id, name, color, ourSide, slots })),
+      scenarios: own.map(({ id, name, color, ourSide, slots, pickRoles }) => ({ id, name, color, ourSide, slots, pickRoles })),
     }
   })
 })
