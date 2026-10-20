@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     coachProvider: 'auto', // auto | gemini | claude
     // Free Google AI Studio models, tried in order: each has its own daily quota.
-    geminiModels: 'gemini-3.8-flash,gemini-3.6-flash,gemini-2.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash-lite',
+    geminiModels: 'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite',
     // OpenRouter (comparison provider): OPENROUTER_API_KEY in .env, model id here or NUXT_OPENROUTER_MODEL.
     openrouterModel: '',
     claudeModel: 'claude-opus-5-5',

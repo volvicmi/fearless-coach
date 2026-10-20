@@ -19,7 +19,7 @@ export async function askOpenRouter<S extends z.ZodType>(prompt: CoachPrompt, sc
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(prompt.mode === 'review' ? 60_000 : 30_000),
     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: openrouterModel,
@@ -29,13 +29,17 @@ export async function askOpenRouter<S extends z.ZodType>(prompt: CoachPrompt, sc
         { role: 'user', content: `${prompt.request}\n\nRéponds uniquement avec un objet JSON valide, sans texte autour.` },
       ],
     }),
+  }).catch(() => {
+    throw createError({ statusCode: 503, statusMessage: 'OpenRouter ne répond pas (délai dépassé) : réessaie dans un instant' })
   })
   if (res.status === 401) throw createError({ statusCode: 503, statusMessage: 'OPENROUTER_API_KEY invalide' })
   if (res.status === 402) throw createError({ statusCode: 402, statusMessage: 'OpenRouter : crédit insuffisant pour ce modèle' })
   if (res.status === 429) throw createError({ statusCode: 429, statusMessage: 'Limite OpenRouter atteinte, réessaie dans un instant' })
   if (!res.ok) throw createError({ statusCode: 502, statusMessage: `Erreur OpenRouter ${res.status}` })
 
-  const body = await res.json() as { model?: string, choices?: { message?: { content?: string } }[] }
+  const body = await res.json().catch(() => {
+    throw createError({ statusCode: 503, statusMessage: 'OpenRouter ne répond pas (délai dépassé) : réessaie dans un instant' })
+  }) as { model?: string, choices?: { message?: { content?: string } }[] }
   const text = body.choices?.[0]?.message?.content ?? ''
   let raw: z.infer<S>
   try {
