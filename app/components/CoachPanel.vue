@@ -30,6 +30,7 @@ onMounted(() => {
   try { auto.value = localStorage.getItem('coach-auto') === '1' }
   catch {}
   loadHistory()
+  loadPlan()
 })
 watch(auto, (on) => {
   try { localStorage.setItem('coach-auto', on ? '1' : '0') }
@@ -100,6 +101,26 @@ const fresh = computed(() => (viewed.value
   : !!result.value && resultAt.value === props.ctx.game.actions.length))
 const advice = computed(() => (shown.value && shown.value.kind !== 'review' ? shown.value : null))
 const review = computed(() => (shown.value?.kind === 'review' ? shown.value : null))
+
+/** Game plan (see server/utils/coach-plan.ts): lanes, fights, split and synergies. */
+interface GameLane { lane: 'top' | 'jungle' | 'mid' | 'bot', ours: string, theirs: string, matchup: string, scaling: string, early: string, mid: string, late: string }
+interface GamePlan { lanes: GameLane[], fights: string[], split: string, synergies: string[], model: string, ms: number }
+const LANE_LABEL = { top: 'Top', jungle: 'Jungle', mid: 'Mid', bot: 'Bot' } as const
+const gamePlan = ref<GamePlan | null>(null)
+const planLoading = ref(false)
+const planError = ref('')
+
+async function loadPlan() {
+  try { gamePlan.value = await $fetch<GamePlan | null>(`/api/games/${props.gameId}/plan`) }
+  catch {}
+}
+async function makePlan() {
+  planLoading.value = true
+  planError.value = ''
+  try { gamePlan.value = await $fetch<GamePlan>('/api/coach/plan', { method: 'POST', body: { gameId: props.gameId } }) }
+  catch (e: any) { planError.value = e?.data?.statusMessage ?? 'Le plan est indisponible pour le moment' }
+  finally { planLoading.value = false }
+}
 
 const copied = ref(false)
 /** Free fallback: copy the whole coach prompt to paste into any AI chat. */
@@ -306,6 +327,61 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
             :name-of="nameOf"
           />
         </div>
+      </div>
+
+      <!-- Plan de jeu : écrit par le coach à partir de cette draft, lane par lane -->
+      <div v-if="mode === 'review'" class="flex flex-col gap-3 border-t border-zinc-800 pt-4">
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="text-sm font-semibold text-zinc-100">
+            Plan de jeu
+          </h3>
+          <button
+            type="button"
+            class="cursor-pointer rounded-md bg-amber-400 px-3 py-1 text-xs font-semibold text-zinc-950 hover:bg-amber-300 disabled:opacity-40"
+            :disabled="planLoading"
+            @click="makePlan"
+          >
+            {{ planLoading ? 'Réflexion…' : gamePlan ? 'Refaire le plan' : 'Générer le plan' }}
+          </button>
+        </div>
+        <p v-if="planError" class="text-xs text-red-400" role="alert">
+          {{ planError }}
+        </p>
+
+        <template v-if="gamePlan">
+          <p class="text-[11px] text-zinc-500">
+            Plan · {{ gamePlan.model }} · {{ (gamePlan.ms / 1000).toFixed(1) }}s
+          </p>
+          <article v-for="l in gamePlan.lanes" :key="l.lane" class="flex flex-col gap-1.5 rounded-lg border border-zinc-800 p-3">
+            <h4 class="text-sm font-semibold text-amber-300">
+              {{ LANE_LABEL[l.lane] }} <span class="font-normal text-zinc-400">· {{ l.ours }} vs {{ l.theirs }}</span>
+            </h4>
+            <p class="text-xs"><span class="font-semibold text-emerald-400">Lane :</span> {{ l.matchup }}</p>
+            <p class="text-xs"><span class="font-semibold text-emerald-400">Scaling :</span> {{ l.scaling }}</p>
+            <p class="text-xs"><span class="font-semibold">Early :</span> {{ l.early }}</p>
+            <p class="text-xs"><span class="font-semibold">Mid :</span> {{ l.mid }}</p>
+            <p class="text-xs"><span class="font-semibold">Late :</span> {{ l.late }}</p>
+          </article>
+          <div class="flex flex-col gap-1 text-xs">
+            <p class="font-semibold text-zinc-100">
+              Combats
+            </p>
+            <ul class="list-disc pl-4 text-zinc-300">
+              <li v-for="f in gamePlan.fights" :key="f">
+                {{ f }}
+              </li>
+            </ul>
+            <p><span class="font-semibold">Split :</span> {{ gamePlan.split }}</p>
+            <p class="pt-1 font-semibold text-zinc-100">
+              Synergies
+            </p>
+            <ul class="list-disc pl-4 text-zinc-300">
+              <li v-for="s in gamePlan.synergies" :key="s">
+                {{ s }}
+              </li>
+            </ul>
+          </div>
+        </template>
       </div>
     </div>
   </section>

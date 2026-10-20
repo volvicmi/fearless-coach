@@ -103,6 +103,14 @@ export function useDb(): DatabaseSync {
       PRIMARY KEY (criterion, champ_id)
     );
 
+    -- Game plan written by the coach once a draft is complete (lane by lane, see server/utils/coach-plan.ts).
+    CREATE TABLE IF NOT EXISTS game_plans (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      game_id    INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+      result     TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     -- Every answer of the coach, kept with the draft step it was given for (history in the panel).
     CREATE TABLE IF NOT EXISTS coach_advice (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
