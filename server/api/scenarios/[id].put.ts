@@ -1,23 +1,30 @@
-import { toScenario, validateColor, validateSlots } from '../../utils/prep'
+import { toScenario, validateColor, validateSlots, validatePrepCombos, validatePrepRoles } from '../../utils/prep'
 
-/** Partial update of a scenario: name, color, ourSide, slots, notes. */
+/** Valider le patch entier avant une seule écriture évite les sauvegardes partielles. */
 export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
   const body = await readBody(event) ?? {}
   const db = useDb()
+  if (!db.prepare('SELECT 1 FROM prep_scenarios WHERE id = ?').get(id)) throw createError({ statusCode: 404, statusMessage: 'Draft de prep introuvable' })
+  const columns: string[] = []
+  const values: string[] = []
+  const set = (column: string, value: string) => { columns.push(`${column} = ?`); values.push(value) }
 
   if (body.name !== undefined) {
-    const name = String(body.name).trim()
+    const name = String(body.name).trim().slice(0, 100)
     if (!name) throw createError({ statusCode: 400, statusMessage: 'Le nom est obligatoire' })
-    db.prepare('UPDATE prep_scenarios SET name = ? WHERE id = ?').run(name, id)
+    set('name', name)
   }
-  if (body.color !== undefined) db.prepare('UPDATE prep_scenarios SET color = ? WHERE id = ?').run(validateColor(body.color), id)
+  if (body.color !== undefined) set('color', validateColor(body.color))
   if (body.ourSide !== undefined) {
     if (!['blue', 'red'].includes(body.ourSide)) throw createError({ statusCode: 400, statusMessage: 'Côté invalide' })
-    db.prepare('UPDATE prep_scenarios SET our_side = ? WHERE id = ?').run(body.ourSide, id)
+    set('our_side', body.ourSide)
   }
-  if (body.slots !== undefined) db.prepare('UPDATE prep_scenarios SET slots = ? WHERE id = ?').run(JSON.stringify(await validateSlots(body.slots)), id)
-  if (body.notes !== undefined) db.prepare('UPDATE prep_scenarios SET notes = ? WHERE id = ?').run(String(body.notes).slice(0, 5000), id)
+  if (body.slots !== undefined) set('slots', JSON.stringify(await validateSlots(body.slots)))
+  if (body.notes !== undefined) set('notes', String(body.notes).slice(0, 5000))
+  if (body.pickRoles !== undefined) set('pick_roles', JSON.stringify(validatePrepRoles(body.pickRoles)))
+  if (body.combos !== undefined) set('combos', JSON.stringify(await validatePrepCombos(body.combos)))
+  if (columns.length) db.prepare(`UPDATE prep_scenarios SET ${columns.join(', ')} WHERE id = ?`).run(...values, id)
 
   const row = db.prepare('SELECT * FROM prep_scenarios WHERE id = ?').get(id)
   if (!row) throw createError({ statusCode: 404, statusMessage: 'Draft de prep introuvable' })

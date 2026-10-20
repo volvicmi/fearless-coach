@@ -185,6 +185,9 @@ export function useDb(): DatabaseSync {
   addColumn(db, 'players', 'puuid', "TEXT NOT NULL DEFAULT ''")
   addColumn(db, 'players', 'soloq_synced_at', 'TEXT')
   addColumn(db, 'players', 'status', "TEXT NOT NULL DEFAULT 'starter'")
+  // Métadonnées de la préparation : les drafts existantes restent intactes.
+  addColumn(db, 'prep_scenarios', 'pick_roles', "TEXT NOT NULL DEFAULT '[]'")
+  addColumn(db, 'prep_scenarios', 'combos', "TEXT NOT NULL DEFAULT '[]'")
   allowPracticeTier(db)
   // Draft colours became draft styles: anything else falls back to "engage".
   db.exec(`UPDATE prep_scenarios SET color = 'engage' WHERE color NOT IN ('engage', 'poke', 'front-to-back')`)

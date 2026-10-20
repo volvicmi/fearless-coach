@@ -189,6 +189,12 @@ export const SCENARIO_COLORS = ['engage', 'poke', 'front-to-back'] as const
 export type ScenarioColor = typeof SCENARIO_COLORS[number]
 
 /** A draft prepared in advance; every step can hold several alternatives (first = main choice). */
+export interface PrepCombo {
+  id: string
+  a: { pick: number, champion: string }
+  b: { pick: number, champion: string }
+}
+
 export interface PrepScenario {
   id: number
   prepId: number
@@ -199,6 +205,10 @@ export interface PrepScenario {
   slots: string[][]
   notes: string
   position: number
+  /** Rôles des cinq picks de notre côté, indépendamment de leur ordre dans la draft. */
+  pickRoles: Role[]
+  /** Duos propres à cette composition, avec des indices de pick stables lors d'un changement de côté. */
+  combos: PrepCombo[]
 }
 
 export interface Prep {
@@ -208,7 +218,7 @@ export interface Prep {
   createdAt: string
   scenarioCount?: number
   /** Light copy of the drafts, for previews in the prep list */
-  scenarios?: Pick<PrepScenario, 'id' | 'name' | 'color' | 'ourSide' | 'slots'>[]
+  scenarios?: Pick<PrepScenario, 'id' | 'name' | 'color' | 'ourSide' | 'slots' | 'pickRoles'>[]
 }
 
 export interface PrepDetail {

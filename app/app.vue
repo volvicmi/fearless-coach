@@ -20,9 +20,9 @@ const tabClass = 'px-3.5 py-2 text-zinc-500 transition-colors hover:bg-zinc-900 
   <div class="flex flex-col" :class="fitScreen ? 'h-screen' : 'min-h-screen'">
     <header class="flex flex-wrap items-center gap-x-8 gap-y-2 border-b border-zinc-800/80 px-4 py-2.5 md:px-6">
       <NuxtLink to="/" class="font-display text-2xl font-extrabold italic leading-none tracking-wider" title="Fearless Coach">
-        OP<span class="text-amber-400">I</span>F
+        OP<span class="text-white">I</span>F
       </NuxtLink>
-      <nav class="flex gap-1 font-display text-sm font-semibold uppercase tracking-[0.08em]">
+      <nav class="flex max-w-full gap-1 overflow-x-auto font-display text-sm font-semibold uppercase tracking-[0.08em]">
         <NuxtLink to="/" :class="[tabClass, draftActive && 'tab-on']">
           Draft
         </NuxtLink>
@@ -40,11 +40,11 @@ const tabClass = 'px-3.5 py-2 text-zinc-500 transition-colors hover:bg-zinc-900 
         Clé API Riot ↗
       </a>
     </header>
-    <main class="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col px-6 py-6">
+    <main class="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col" :class="route.meta.prepLayout ? 'prep-app-main' : 'px-6 py-6'">
       <NuxtPage />
     </main>
     <ConfirmDialog />
-    <footer class="px-6 py-4 text-center text-xs text-zinc-600">
+    <footer class="px-6 text-center text-xs text-zinc-600" :class="route.meta.prepLayout ? 'py-2' : 'py-4'">
       Fearless Coach n'est pas approuvé par Riot Games et ne reflète pas les opinions de Riot Games ou de quiconque ayant officiellement participé à la production ou à la gestion de Riot Games. Riot Games et toutes les propriétés associées sont des marques commerciales ou déposées de Riot Games, Inc.
     </footer>
   </div>

@@ -1,101 +1,105 @@
 <script setup lang="ts">
 import type { PrepDetail, PrepScenario } from '#shared/types'
 
+definePageMeta({ fitScreen: true, prepLayout: true })
 const route = useRoute()
 const id = route.params.id as string
-
 const { data, refresh } = await useFetch<PrepDetail>(`/api/preps/${id}`)
-if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Prep introuvable', fatal: true })
+if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Préparation introuvable', fatal: true })
 const { champions, byId, iconUrl } = await useChampions()
-const nameOf = (c: string) => byId.value.get(c)?.name ?? c
-
-/** Selected scenario, kept in the URL (?s=) so a reload stays on it. */
-const selectedId = computed<number | undefined>({
-  get: () => Number(route.query.s) || data.value?.scenarios[0]?.id,
-  set: s => navigateTo({ query: { ...route.query, s } }, { replace: true }),
-})
+const selectedId = computed({ get: () => Number(route.query.s) || data.value?.scenarios[0]?.id, set: s => { void navigateTo({ query: { ...route.query, s } }, { replace: true }) } })
 const selected = computed(() => data.value?.scenarios.find(s => s.id === selectedId.value) ?? data.value?.scenarios[0])
+const pending = ref(0)
+const dirtyCount = ref(0)
+const failed = ref(new Set<number>())
+const busy = ref(false)
+const actionError = ref('')
+const prepModal = ref(false)
+const prepForm = reactive({ name: data.value.prep.name, opponent: data.value.prep.opponent })
+const dirty = new Map<number, PrepScenario>()
+let timer: ReturnType<typeof setTimeout> | undefined
+let queue: Promise<void> = Promise.resolve()
 
-/** Saves run in order; the screen updates first (useFetch data is a shallowRef: replace, don't mutate). */
-let saveQueue: Promise<unknown> = Promise.resolve()
 function patchScenario(s: PrepScenario, patch: Partial<PrepScenario>) {
-  data.value = { ...data.value!, scenarios: data.value!.scenarios.map(x => (x.id === s.id ? { ...x, ...patch } : x)) }
-  saveQueue = saveQueue
-    .then(() => $fetch(`/api/scenarios/${s.id}`, { method: 'PUT', body: patch }))
-    .catch(() => refresh())
+  const updated = { ...s, ...patch }
+  data.value = { ...data.value!, scenarios: data.value!.scenarios.map(x => x.id === s.id ? updated : x) }
+  dirty.set(s.id, updated)
+  dirtyCount.value = dirty.size
+  clearTimeout(timer)
+  timer = setTimeout(flush, 350)
 }
-
+function flush() {
+  clearTimeout(timer)
+  const batch = [...dirty.values()]
+  dirty.clear()
+  dirtyCount.value = 0
+  pending.value += batch.length
+  queue = queue.then(async () => {
+    for (const snapshot of batch) {
+      try {
+        await $fetch(`/api/scenarios/${snapshot.id}`, { method: 'PUT', body: { name: snapshot.name, color: snapshot.color, ourSide: snapshot.ourSide, slots: snapshot.slots, notes: snapshot.notes, pickRoles: snapshot.pickRoles, combos: snapshot.combos } })
+        const next = new Set(failed.value); next.delete(snapshot.id); failed.value = next
+      }
+      catch { failed.value = new Set([...failed.value, snapshot.id]) }
+      finally { pending.value-- }
+    }
+  })
+  return queue
+}
+async function retry() {
+  for (const s of data.value!.scenarios) if (failed.value.has(s.id)) dirty.set(s.id, s)
+  await flush()
+}
 async function addScenario(copyFrom?: number) {
-  const created = await $fetch<PrepScenario>(`/api/preps/${id}/scenarios`, { method: 'POST', body: { copyFrom } })
-  await refresh()
-  selectedId.value = created.id
+  if (busy.value) return
+  await flush()
+  if (failed.value.size) return
+  busy.value = true; actionError.value = ''
+  try {
+    const created = await $fetch<PrepScenario>(`/api/preps/${id}/scenarios`, { method: 'POST', body: { copyFrom } })
+    await refresh(); selectedId.value = created.id
+  }
+  catch { actionError.value = 'Impossible de créer cette composition. Réessaie.' }
+  finally { busy.value = false }
 }
-
 async function removeScenario(s: PrepScenario) {
   if (!(await askConfirm(`Supprimer « ${s.name} » ?`, { confirmLabel: 'Supprimer', danger: true }))) return
-  await $fetch(`/api/scenarios/${s.id}`, { method: 'DELETE' })
-  await refresh()
-  selectedId.value = data.value?.scenarios[0]?.id
+  await flush()
+  busy.value = true
+  try { await $fetch(`/api/scenarios/${s.id}`, { method: 'DELETE' }); failed.value.delete(s.id); await refresh(); selectedId.value = data.value?.scenarios[0]?.id }
+  catch { actionError.value = 'Impossible de supprimer cette composition.' }
+  finally { busy.value = false }
 }
-
-async function updatePrep(body: { name?: string, opponent?: string }) {
-  await $fetch(`/api/preps/${id}`, { method: 'PUT', body })
-  await refresh()
+async function savePrep() {
+  if (!prepForm.name.trim()) return
+  busy.value = true
+  try { await flush(); await $fetch(`/api/preps/${id}`, { method: 'PUT', body: prepForm }); data.value = { ...data.value!, prep: { ...data.value!.prep, ...prepForm } }; prepModal.value = false }
+  catch { actionError.value = 'Impossible de modifier la préparation.' }
+  finally { busy.value = false }
 }
+async function removePrep() {
+  if (!(await askConfirm(`Supprimer « ${data.value!.prep.name} » et toutes ses compositions ?`, { confirmLabel: 'Supprimer', danger: true }))) return
+  await flush()
+  try { await $fetch(`/api/preps/${id}`, { method: 'DELETE' }); failed.value = new Set(); prepModal.value = false; await navigateTo('/prep') }
+  catch { actionError.value = 'Impossible de supprimer la préparation.' }
+}
+onBeforeRouteLeave(async () => { await flush(); if (failed.value.size) return askConfirm('Certaines modifications ne sont pas enregistrées. Quitter cette préparation ?', { confirmLabel: 'Quitter', danger: true }) })
+onBeforeUnmount(() => { clearTimeout(timer) })
 </script>
 
 <template>
-  <div v-if="data" class="flex flex-col gap-5">
-    <div class="flex flex-wrap items-center gap-3">
-      <NuxtLink to="/prep" class="text-sm text-zinc-500 hover:text-zinc-200">
-        ← Preps
-      </NuxtLink>
-      <input
-        :value="data.prep.name"
-        class="w-72 border border-transparent bg-transparent px-1 text-xl font-semibold hover:bg-zinc-900 focus:bg-zinc-700 focus:outline-none"
-        @change="updatePrep({ name: ($event.target as HTMLInputElement).value })"
-      >
-      <input
-        :value="data.prep.opponent"
-        placeholder="Adversaire"
-        class="w-48 rounded-md bg-zinc-800 px-2 py-1 text-sm"
-        @change="updatePrep({ opponent: ($event.target as HTMLInputElement).value })"
-      >
-    </div>
-
-    <div class="grid items-start gap-5 2xl:grid-cols-[260px_minmax(0,1fr)]">
-      <!-- Scenario list -->
-      <nav class="flex gap-2 overflow-x-auto pb-1 2xl:sticky 2xl:top-4 2xl:max-h-[calc(100vh-2rem)] 2xl:flex-col 2xl:overflow-x-hidden 2xl:overflow-y-auto 2xl:p-1">
-        <ScenarioThumb
-          v-for="s in data.scenarios"
-          :key="s.id"
-          class="w-60 shrink-0 2xl:w-auto"
-          :scenario="s"
-          :active="s.id === selected?.id"
-          :icon-url="iconUrl"
-          :name-of="nameOf"
-          @click="selectedId = s.id"
-        />
-        <button
-          type="button"
-          class="w-60 shrink-0 cursor-pointer p-3 text-sm text-zinc-400 hover:text-zinc-100 2xl:w-auto bg-zinc-900 hover:bg-zinc-800"
-          @click="addScenario()"
-        >
-          + Nouvelle draft
-        </button>
-      </nav>
-
-      <ScenarioEditor
-        v-if="selected"
-        :key="selected.id"
-        :scenario="selected"
-        :champions="champions"
-        :icon-url="iconUrl"
-        :name-of="nameOf"
-        @update="patch => patchScenario(selected!, patch)"
-        @duplicate="addScenario(selected!.id)"
-        @remove="removeScenario(selected!)"
-      />
-    </div>
+  <div class="prep-detail-page">
+    <div v-if="failed.size || actionError" role="alert" class="prep-save-error"><span>{{ actionError || 'Sauvegarde impossible. Tes modifications sont toujours affichées.' }}</span><button v-if="failed.size" type="button" class="prep-btn" @click="retry">Réessayer la sauvegarde</button></div>
+    <PrepCompositionEditor v-if="selected" :key="selected.id" :scenario="selected" :champions="champions" :name-of="c => byId.get(c)?.name ?? c" :icon-url="iconUrl" :saving="pending > 0 || dirtyCount > 0" :save-error="failed.has(selected.id)" :busy="busy" @update="patch => patchScenario(selected!, patch)" @duplicate="addScenario(selected!.id)" @remove="removeScenario(selected!)">
+      <template #context>
+        <button type="button" class="prep-context-button" @click="Object.assign(prepForm, { name: data!.prep.name, opponent: data!.prep.opponent }); prepModal = true">{{ data!.prep.opponent ? `vs ${data!.prep.opponent}` : data!.prep.name }} <span aria-hidden="true">⌄</span></button>
+        <label v-if="data!.scenarios.length > 1"><span class="sr-only">Composition de la préparation</span><select v-model="selectedId"><option v-for="s in data!.scenarios" :key="s.id" :value="s.id">{{ s.name }}</option></select></label>
+      </template>
+      <template #actions><button type="button" class="prep-btn" :disabled="busy" @click="addScenario()">+ Composition</button></template>
+    </PrepCompositionEditor>
+    <div v-else class="prep-empty"><NuxtLink to="/prep">← Galerie</NuxtLink><h1>{{ data!.prep.name }}</h1><p>Cette préparation ne contient aucune composition.</p><button class="btn-action" :disabled="busy" @click="addScenario()">+ Nouvelle composition</button><button class="prep-btn" @click="Object.assign(prepForm, { name: data!.prep.name, opponent: data!.prep.opponent }); prepModal = true">Modifier la préparation</button></div>
+    <AppModal v-model="prepModal" title="Préparation">
+      <form class="prep-form" @submit.prevent="savePrep"><label>Nom<input v-model="prepForm.name" required></label><label>Adversaire<input v-model="prepForm.opponent" placeholder="Facultatif"></label><div class="prep-form-actions"><button class="prep-btn prep-danger" type="button" :disabled="busy" @click="removePrep">Supprimer la préparation</button><button class="btn-action" type="submit" :disabled="busy">Enregistrer</button></div></form>
+    </AppModal>
   </div>
 </template>

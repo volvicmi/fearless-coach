@@ -1,6 +1,7 @@
 import { DRAFT_ORDER } from '#shared/draft'
-import { SCENARIO_COLORS } from '#shared/types'
-import type { Prep, PrepScenario } from '#shared/types'
+import { ROLES, SCENARIO_COLORS } from '#shared/types'
+import type { Prep, PrepCombo, PrepScenario, Role } from '#shared/types'
+import { inferPrepRoles, MAX_PREP_COMBOS, prepComboKey } from '#shared/prep'
 
 /** Up to this many alternatives per draft step. */
 export const MAX_ALTERNATIVES = 6
@@ -20,16 +21,40 @@ export function toPrep(row: any): Prep {
 }
 
 export function toScenario(row: any): PrepScenario {
+  const slots = JSON.parse(row.slots) as string[][]
+  const storedRoles = JSON.parse(row.pick_roles ?? '[]') as Role[]
   return {
     id: row.id,
     prepId: row.prep_id,
     name: row.name,
     color: row.color,
     ourSide: row.our_side,
-    slots: JSON.parse(row.slots),
+    slots,
     notes: row.notes,
     position: row.position,
+    pickRoles: storedRoles.length === 5 ? storedRoles : inferPrepRoles(slots, row.our_side),
+    combos: JSON.parse(row.combos ?? '[]'),
   }
+}
+
+export function validatePrepRoles(value: unknown): Role[] {
+  if (!Array.isArray(value) || value.length !== 5 || new Set(value).size !== 5 || !value.every(r => ROLES.includes(r))) {
+    throw createError({ statusCode: 400, statusMessage: 'Les cinq rôles doivent être distincts' })
+  }
+  return value as Role[]
+}
+
+export async function validatePrepCombos(value: unknown): Promise<PrepCombo[]> {
+  if (!Array.isArray(value) || value.length > MAX_PREP_COMBOS) throw createError({ statusCode: 400, statusMessage: 'Combos invalides' })
+  const { champions } = await getChampions()
+  const ids = new Set(champions.map(c => c.id))
+  const endpoint = (end: any) => end && Number.isInteger(end.pick) && end.pick >= 0 && end.pick < 5 && ids.has(end.champion)
+  const valid = value.every(c => c && typeof c.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(c.id)
+    && endpoint(c.a) && endpoint(c.b) && c.a.pick !== c.b.pick && c.a.champion !== c.b.champion)
+  if (!valid || new Set(value.map(c => c.id)).size !== value.length || new Set(value.map(prepComboKey)).size !== value.length) {
+    throw createError({ statusCode: 400, statusMessage: 'Combos invalides ou dupliqués' })
+  }
+  return value.map(c => ({ id: c.id, a: { pick: c.a.pick, champion: c.a.champion }, b: { pick: c.b.pick, champion: c.b.champion } }))
 }
 
 /** Throws a 400 unless `slots` is 20 lists of known, unique-per-step champion ids. */
