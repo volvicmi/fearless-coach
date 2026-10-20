@@ -1,11 +1,141 @@
 @import "tailwindcss";
 
+/* Charte « Régie » (Opif Gaming) : tout en nuit, graphite légèrement bleuté, la corne (cyan → violet → rose) sur ce qui est actif.
+   Les gammes zinc et amber de Tailwind sont redéfinies : zinc = graphite Régie, amber = violet de la corne.
+   Ainsi toutes les classes existantes prennent la charte sans être réécrites une à une. */
 @theme {
-  --color-side-blue: #3b82f6;
-  --color-side-red: #ef4444;
+  --font-sans: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Saira Condensed", "Arial Narrow", sans-serif;
+
+  --color-zinc-50: #f5f6fa;
+  --color-zinc-100: #e9ecf4;
+  --color-zinc-200: #d3d7e3;
+  --color-zinc-300: #b3b9ca;
+  --color-zinc-400: #8f96ab;
+  --color-zinc-500: #6e7488;
+  --color-zinc-600: #4d5367;
+  --color-zinc-700: #2c3145;
+  --color-zinc-800: #1c2030;
+  --color-zinc-900: #131620;
+  --color-zinc-950: #0b0d13;
+
+  --color-amber-50: #f3f1ff;
+  --color-amber-100: #e6e2ff;
+  --color-amber-200: #cfc8ff;
+  --color-amber-300: #bdb3ff;
+  --color-amber-400: #a99cff;
+  --color-amber-500: #8b7cff;
+  --color-amber-600: #7262e8;
+  --color-amber-700: #5a4bc4;
+  --color-amber-800: #42379a;
+  --color-amber-900: #2e2770;
+  --color-amber-950: #1c1745;
+
+  --color-side-blue: #3b8eff;
+  --color-side-red: #ff4560;
+
+  /* Tiers des tier lists : S jaune, A vert, B violet et C rose de la charte */
+  --color-tier-s: #fbbf24;
+  --color-tier-a: #10b981;
+  --color-tier-b: #8b7cff;
+  --color-tier-c: #e8579b;
+}
+
+:root {
+  --horn: linear-gradient(90deg, #4fc3ff, #8b7cff 48%, #e8579b);
+  --horn-action: linear-gradient(90deg, #6f8bff, #9b7cff 55%, #d85fa8);
 }
 
 html,
 body {
   @apply bg-zinc-950 text-zinc-100 antialiased;
+}
+
+/* Contrôles natifs (barres de défilement, heures, listes) en sombre, barres fines et discrètes */
+html {
+  color-scheme: dark;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-zinc-700) transparent;
+}
+
+/* Curseur main sur tout ce qui se clique */
+button:not(:disabled),
+a[href],
+select,
+summary,
+label:has(> input[type="checkbox"]),
+label:has(> input[type="radio"]),
+input[type="checkbox"],
+input[type="radio"],
+[role="button"] {
+  cursor: pointer;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+@layer components {
+  /* Panneau sans contour, coin haut droit coupé (un triangle couleur fond, pour ne pas rogner menus et infobulles) */
+  .cut {
+    position: relative;
+    border-radius: 0;
+  }
+  .cut-l {
+    position: relative;
+    border-radius: 0;
+  }
+  /* Variante : coin haut gauche coupé (côté rouge, en miroir) */
+  .cut-l::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(135deg, var(--color-zinc-950) 50%, transparent 50%);
+    pointer-events: none;
+  }
+  .cut::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(225deg, var(--color-zinc-950) 50%, transparent 50%);
+    pointer-events: none;
+  }
+
+  /* Action principale : dégradé de la corne, forme parallélogramme */
+  .btn-action {
+    background-image: var(--horn-action);
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 0;
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+    padding: 0.6rem 1.75rem;
+    line-height: 1.25;
+    transition: filter 0.15s;
+  }
+  .btn-action:hover:not(:disabled) {
+    filter: brightness(1.12);
+  }
+
+}
+
+/* Hors calque : passe devant les utilitaires de couleur des onglets inactifs */
+/* Élément actif (onglet, puce, filtre) : aplat violet léger, texte clair */
+.tab-on {
+  color: var(--color-amber-100);
+  border-color: transparent;
+  background-color: color-mix(in srgb, var(--color-amber-400) 16%, transparent);
 }

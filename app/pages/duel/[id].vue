@@ -265,7 +265,7 @@ watch(
       <button
         v-if="canNextGame"
         type="button"
-        class="cursor-pointer rounded-md border border-dashed border-zinc-700 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-100"
+        class="cursor-pointer px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-100 bg-zinc-900 hover:bg-zinc-800"
         @click="nextGame"
       >
         + Game suivante
@@ -301,7 +301,7 @@ watch(
 
       <!-- Fin de draft : l'IA départage -->
       <section v-if="complete" aria-live="polite" class="flex flex-col gap-3">
-        <div v-if="judging" class="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-5 text-sm text-zinc-300">
+        <div v-if="judging" class="cut flex items-center gap-3 bg-zinc-900 px-4 py-5 text-sm text-zinc-300">
           <span class="size-4 animate-spin rounded-full border-2 border-zinc-600 border-t-amber-400" />
           L’IA compare les deux drafts… quelques secondes.
         </div>
@@ -315,7 +315,7 @@ watch(
           </div>
         </template>
 
-        <div v-else class="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+        <div v-else class="cut flex flex-col gap-3 bg-zinc-900 p-4">
           <p v-if="judgeError" class="text-sm text-red-400" role="alert">
             {{ judgeError }}
           </p>
@@ -328,7 +328,7 @@ watch(
           <div class="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              class="cursor-pointer rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-300"
+              class="btn-action cursor-pointer text-sm"
               @click="judge()"
             >
               {{ judgeError ? 'Réessayer' : 'Demander le verdict de l’IA' }}
@@ -341,7 +341,7 @@ watch(
               class="cursor-pointer rounded-md border px-3 py-1.5 text-sm"
               :class="game.winner === s.value
                 ? (s.value === 'blue' ? 'border-side-blue bg-side-blue text-white' : 'border-side-red bg-side-red text-white')
-                : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'"
+                : 'border-transparent text-zinc-300 hover:bg-zinc-800 bg-zinc-900'"
               @click="patchGame(game!, { winner: game.winner === s.value ? null : s.value })"
             >
               {{ names[s.value] }}

@@ -21,10 +21,10 @@ const byTier = computed(() => ROWS.map(tier => ({ tier, entries: pool.value.filt
 const inPool = computed(() => new Map(pool.value.filter(e => e.tier !== 'P').map(e => [e.champId, `Déjà en tier ${e.tier}`])))
 
 const TIER_STYLE: Record<Exclude<Tier, 'P'>, string> = {
-  S: 'bg-amber-400 text-zinc-950',
-  A: 'bg-emerald-500 text-zinc-950',
-  B: 'bg-sky-500 text-zinc-950',
-  C: 'bg-zinc-500 text-zinc-950',
+  S: 'bg-tier-s text-zinc-950',
+  A: 'bg-tier-a text-zinc-950',
+  B: 'bg-tier-b text-zinc-950',
+  C: 'bg-tier-c text-zinc-950',
 }
 const TIER_CAPTION: Record<Exclude<Tier, 'P'>, string> = {
   S: 'Confort max',
@@ -77,7 +77,7 @@ async function removeChamp(champId: string) {
 }
 
 async function removePlayer() {
-  if (!confirm(`Retirer ${props.player.name} et son pool ?`)) return
+  if (!(await askConfirm(`Retirer ${props.player.name} et son pool ?`, { confirmLabel: 'Retirer', danger: true }))) return
   await $fetch(`/api/players/${props.player.id}`, { method: 'DELETE' })
   emit('changed')
 }
@@ -89,12 +89,12 @@ async function removePlayer() {
     <div class="flex flex-wrap items-center gap-3">
       <input
         :value="player.name"
-        class="w-44 rounded-md border border-transparent bg-transparent px-1 text-lg font-semibold hover:border-zinc-700 focus:border-amber-400 focus:outline-none"
+        class="w-44 border border-transparent bg-transparent px-1 text-lg font-semibold hover:bg-zinc-900 focus:bg-zinc-700 focus:outline-none"
         @change="updatePlayer({ name: ($event.target as HTMLInputElement).value })"
       >
       <select
         :value="player.role"
-        class="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm capitalize"
+        class="rounded-md bg-zinc-800 px-2 py-1 text-sm capitalize"
         @change="updatePlayer({ role: ($event.target as HTMLSelectElement).value as Player['role'] })"
       >
         <option v-for="r in ROLES" :key="r" :value="r">
@@ -116,7 +116,7 @@ async function removePlayer() {
       <input
         :value="player.riotId"
         placeholder="Riot ID (Nom#TAG)"
-        class="w-56 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm"
+        class="w-56 rounded-md bg-zinc-800 px-2 py-1 text-sm"
         @change="updatePlayer({ riotId: ($event.target as HTMLInputElement).value })"
       >
       <button type="button" class="ml-auto text-xs text-zinc-500 hover:text-red-400" @click="removePlayer">
@@ -132,13 +132,13 @@ async function removePlayer() {
           v-for="group in byTier"
           :key="group.tier"
           :data-tier-drop="group.tier"
-          class="flex min-h-[88px] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40 transition-colors"
+          class="cut flex min-h-[112px] overflow-hidden bg-zinc-900 transition-colors"
         >
-          <div class="flex w-20 shrink-0 flex-col items-center justify-center gap-0.5" :class="TIER_STYLE[group.tier]">
-            <span class="text-3xl font-black leading-none">{{ group.tier }}</span>
-            <span class="text-[10px] font-semibold uppercase tracking-wide opacity-80">{{ TIER_CAPTION[group.tier] }}</span>
+          <div class="flex size-[112px] shrink-0 flex-col items-center justify-center gap-1 px-3 text-center" :class="TIER_STYLE[group.tier]">
+            <span class="font-display text-4xl font-extrabold leading-none">{{ group.tier }}</span>
+            <span class="font-display text-[11px] font-semibold uppercase leading-tight tracking-wider opacity-80">{{ TIER_CAPTION[group.tier] }}</span>
           </div>
-          <div data-tier-items class="flex flex-1 flex-wrap content-start items-start gap-2 p-2">
+          <div data-tier-items class="flex flex-1 flex-wrap content-start items-start gap-2 p-3">
             <span v-if="!group.entries.length" class="self-center px-2 text-xs text-zinc-600">Dépose des champions ici</span>
             <div v-for="e in group.entries" :key="e.champId" class="group relative w-16">
               <div
@@ -160,9 +160,7 @@ async function removePlayer() {
               <button
                 type="button"
                 class="absolute -left-1 -top-1 size-5 cursor-pointer place-items-center rounded-full shadow ring-1 transition-colors"
-                :class="e.train
-                  ? 'grid bg-fuchsia-500 text-zinc-950 ring-fuchsia-300'
-                  : 'hidden bg-zinc-950 text-zinc-400 ring-zinc-700 hover:bg-fuchsia-500 hover:text-zinc-950 hover:ring-fuchsia-300 group-hover:grid'"
+                :class="e.train ? 'grid bg-fuchsia-500 text-zinc-950 ring-fuchsia-300' : 'hidden bg-zinc-950 text-zinc-400 ring-zinc-700 hover:bg-fuchsia-500 hover:text-zinc-950 hover:ring-fuchsia-300 group-hover:grid'"
                 :title="e.train ? `${nameOf(e.champId)} : à travailler en priorité (clique pour retirer)` : `Marquer ${nameOf(e.champId)} comme à travailler en priorité`"
                 :aria-pressed="e.train"
                 @click="toggleTrain(e)"
@@ -188,7 +186,7 @@ async function removePlayer() {
       </div>
 
       <!-- Side panel: also the "remove" drop zone -->
-      <aside data-tier-drop="remove" class="flex flex-col gap-3 rounded-lg border border-zinc-800 p-3 transition-colors xl:sticky xl:top-4 xl:h-[640px]">
+      <aside data-tier-drop="remove" class="cut flex flex-col gap-3 p-3 transition-colors xl:sticky xl:top-4 xl:h-[640px] bg-zinc-900">
         <div class="flex gap-1 rounded-md bg-zinc-900 p-1 text-sm">
           <button
             v-for="t in (['champions', 'ranked'] as const)"

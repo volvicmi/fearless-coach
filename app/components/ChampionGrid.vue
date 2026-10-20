@@ -59,7 +59,7 @@ onMounted(() => input.value?.focus())
         v-model="search"
         type="search"
         placeholder="Chercher un champion… (Entrée = premier résultat)"
-        class="min-w-48 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm outline-none focus:border-amber-400"
+        class="min-w-48 flex-1 bg-zinc-800 px-3 py-1.5 text-sm outline-none focus:bg-zinc-700"
         @keydown.enter.prevent="onEnter"
       >
       <button
@@ -67,7 +67,7 @@ onMounted(() => input.value?.focus())
         :key="t"
         type="button"
         class="rounded-md border px-2 py-1 text-xs"
-        :class="tag === t ? 'border-amber-400 text-amber-300' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200'"
+        :class="tag === t ? 'tab-on' : 'border-transparent text-zinc-400 hover:text-zinc-200 bg-zinc-900'"
         @click="tag = tag === t ? null : t"
       >
         {{ TAG_LABEL[t] ?? t }}

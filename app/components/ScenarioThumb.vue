@@ -27,10 +27,11 @@ const filled = computed(() => [...bans.value, ...picks.value].filter(s => s.leng
 
 <template>
   <div
-    class="flex cursor-pointer flex-col gap-2 rounded-lg border-l-4 bg-zinc-900/60 p-2.5 transition-colors hover:bg-zinc-900"
-    :class="[style.border, active ? 'ring-2 ring-zinc-200/70' : 'ring-1 ring-zinc-800']"
+    class="flex cursor-pointer flex-col gap-2 p-2.5 transition-colors"
+    :class="active ? 'tab-on' : 'bg-zinc-900 hover:bg-zinc-800'"
   >
     <div class="flex items-center gap-2">
+      <span class="size-2 shrink-0 rounded-full" :class="style.dot" :title="style.label" />
       <span class="truncate text-sm font-semibold">{{ scenario.name }}</span>
       <span
         class="ml-auto rounded px-1.5 text-[10px] font-bold uppercase"

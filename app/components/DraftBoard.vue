@@ -40,8 +40,8 @@ const actor = computed(() => {
 })
 
 const play = (champ: string) => emit('update', [...props.game.actions, champ])
-function undo() {
-  if (done.value && props.confirmUndo && !confirm(props.confirmUndo)) return
+async function undo() {
+  if (done.value && props.confirmUndo && !(await askConfirm(props.confirmUndo, { confirmLabel: 'Revenir en arrière' }))) return
   emit('update', props.game.actions.slice(0, -1))
 }
 
@@ -88,14 +88,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <button
             v-if="current?.type === 'ban'"
             type="button"
-            class="rounded-md border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800"
+            class="px-3 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 font-display font-semibold uppercase tracking-wider"
             @click="play(NO_BAN)"
           >
             Passer le ban
           </button>
           <button
             type="button"
-            class="rounded-md border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800 disabled:opacity-40"
+            class="px-3 py-1 text-xs disabled:opacity-40 bg-zinc-800 hover:bg-zinc-700 font-display font-semibold uppercase tracking-wider"
             :disabled="!game.actions.length"
             title="Ctrl+Z"
             @click="undo"

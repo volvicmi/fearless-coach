@@ -23,7 +23,7 @@ const total = computed(() => byGame.value.reduce((n, g) => n + g.champs.length, 
 </script>
 
 <template>
-  <section v-if="fearless !== 'off'" class="rounded-lg border border-zinc-800 p-3">
+  <section v-if="fearless !== 'off'" class="cut p-3 bg-zinc-900">
     <h3 class="mb-2 text-sm font-semibold">
       Bloqués par le Fearless
       <span class="font-normal text-zinc-500">· les deux équipes ({{ total }})</span>

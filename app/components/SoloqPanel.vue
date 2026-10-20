@@ -59,7 +59,7 @@ async function addToPool(champId: string) {
 <template>
   <section class="flex flex-col gap-2">
     <div class="flex flex-wrap items-center gap-2">
-      <h4 class="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <h4 class="text-xs font-semibold uppercase font-display tracking-wider text-zinc-400">
         Ranked
       </h4>
       <span v-if="soloq?.syncedAt" class="text-xs text-zinc-500">
@@ -67,7 +67,7 @@ async function addToPool(champId: string) {
       </span>
       <button
         type="button"
-        class="ml-auto rounded-md border border-zinc-700 px-2 py-0.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
+        class="ml-auto px-2 py-0.5 text-xs text-zinc-300 disabled:opacity-40 bg-zinc-800 hover:bg-zinc-700 font-display font-semibold uppercase tracking-wider"
         :disabled="syncing || !player.riotId.includes('#')"
         :title="player.riotId.includes('#') ? 'Importer les parties classées depuis l’API Riot' : 'Renseigne d’abord le Riot ID (Nom#TAG)'"
         @click="sync"
@@ -82,7 +82,7 @@ async function addToPool(champId: string) {
         :key="q"
         type="button"
         class="flex-1 cursor-pointer rounded-md border px-2 py-1"
-        :class="queue === q ? 'border-amber-400 bg-zinc-900 text-zinc-100' : 'border-zinc-800 text-zinc-400 hover:text-zinc-200'"
+        :class="queue === q ? 'tab-on' : 'border-transparent text-zinc-400 hover:text-zinc-200 bg-zinc-900'"
         @click="queue = q"
       >
         {{ QUEUE_LABEL[q] }}

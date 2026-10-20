@@ -165,10 +165,10 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
 </script>
 
 <template>
-  <section class="grid gap-4 rounded-lg border border-zinc-800 p-4 lg:grid-cols-[1fr_1.4fr] xl:grid-cols-1">
+  <section class="cut grid gap-4 p-4 lg:grid-cols-[1fr_1.4fr] xl:grid-cols-1 bg-zinc-900">
     <!-- Instant engine suggestions -->
     <div v-if="mode !== 'review'" class="flex flex-col gap-2">
-      <h3 class="text-sm font-semibold">
+      <h3 class="font-display text-base font-bold uppercase tracking-wider">
         Suggestions
         <span class="font-normal text-zinc-500">· d’après vos pools</span>
       </h3>
@@ -206,7 +206,7 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
     <!-- AI coach -->
     <div class="flex flex-col gap-2" :class="mode === 'review' && 'lg:col-span-2 xl:col-span-1'">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h3 class="text-sm font-semibold">
+        <h3 class="font-display text-base font-bold uppercase tracking-wider">
           Coach IA
         </h3>
         <label class="flex items-center gap-1.5 text-xs text-zinc-400" title="Demande automatiquement à nos tours et pour l’analyse finale">
@@ -215,7 +215,7 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
         </label>
         <button
           type="button"
-          class="ml-auto rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+          class="ml-auto px-2 py-1 text-xs text-zinc-300 bg-zinc-800 hover:bg-zinc-700 font-display font-semibold uppercase tracking-wider"
           title="Copie le contexte de la draft pour le coller dans n’importe quel chat IA (gratuit)"
           @click="copyContext"
         >
@@ -241,7 +241,7 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
         </select>
         <button
           type="button"
-          class="rounded-md bg-amber-400 px-3 py-1 text-xs font-semibold text-zinc-950 hover:bg-amber-300 disabled:opacity-40"
+          class="btn-action text-xs disabled:opacity-40"
           :disabled="loading"
           @click="ask"
         >
@@ -296,7 +296,7 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
           v-for="r in advice.recommendations"
           :key="r.champId"
           type="button"
-          class="flex items-start gap-2 rounded-md p-1.5 text-left hover:bg-zinc-800 disabled:cursor-default disabled:hover:bg-transparent"
+          class="flex items-start gap-2 bg-zinc-800/60 p-2 text-left hover:bg-zinc-800 disabled:cursor-default disabled:hover:bg-zinc-800/60"
           :disabled="!fresh"
           :title="advice.kind === 'prediction' ? 'Clique s’ils le prennent' : 'Clique pour le jouer'"
           @click="play(r.champId)"

@@ -29,7 +29,7 @@ async function create(anchor: string) {
 }
 
 async function removeCombo(c: Combo) {
-  if (c.partners.length && !confirm(`Supprimer le combo ${props.nameOf(c.anchor)} ?`)) return
+  if (c.partners.length && !(await askConfirm(`Supprimer le combo ${props.nameOf(c.anchor)} ?`, { confirmLabel: 'Supprimer', danger: true }))) return
   await $fetch(`/api/combos/${c.id}`, { method: 'DELETE' })
   await refresh()
 }
@@ -81,7 +81,7 @@ function editNote(c: Combo, note: string) {
       <div
         v-for="c in combos"
         :key="c.id"
-        class="group/combo flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-2"
+        class="cut group/combo flex items-center gap-3 bg-zinc-900 p-2"
       >
         <!-- The champion of the combo -->
         <div :data-tier-drop="zoneId('a', c)" class="rounded-lg p-1 transition-colors">
@@ -101,7 +101,7 @@ function editNote(c: Combo, note: string) {
         <!-- Its partners -->
         <div
           :data-tier-drop="zoneId('p', c)"
-          class="flex min-h-16 flex-1 items-center rounded-lg border border-dashed border-zinc-800 p-1.5 transition-colors"
+          class="cut flex min-h-16 flex-1 items-center border-dashed p-1.5 transition-colors bg-zinc-900"
         >
           <div data-tier-items class="flex flex-wrap items-center gap-1.5">
             <span v-if="!c.partners.length" class="px-1 text-xs text-zinc-600">Dépose ses partenaires ici</span>
@@ -125,7 +125,7 @@ function editNote(c: Combo, note: string) {
         <input
           :value="c.note"
           placeholder="Note (lane, quand le picker…)"
-          class="w-56 select-text rounded-md border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-xs outline-none focus:border-amber-400"
+          class="w-56 select-text bg-zinc-800 px-2 py-1 text-xs outline-none focus:bg-zinc-700"
           @input="editNote(c, ($event.target as HTMLInputElement).value)"
         >
         <button
@@ -139,13 +139,13 @@ function editNote(c: Combo, note: string) {
 
       <div
         data-tier-drop="new"
-        class="flex min-h-20 items-center justify-center rounded-lg border-2 border-dashed border-zinc-800 text-sm text-zinc-500 transition-colors"
+        class="flex min-h-20 items-center justify-center rounded-lg border-2 border-dashed border-transparent text-sm text-zinc-500 transition-colors bg-zinc-900"
       >
         Dépose un champion ici pour créer un combo (ou clique sur l’un d’eux dans la liste)
       </div>
     </div>
 
-    <aside data-tier-drop="remove" class="flex flex-col gap-2 rounded-lg border border-zinc-800 p-3 transition-colors xl:sticky xl:top-4 xl:h-[640px]">
+    <aside data-tier-drop="remove" class="cut flex flex-col gap-2 p-3 transition-colors xl:sticky xl:top-4 xl:h-[640px] bg-zinc-900">
       <ChampionGrid
         class="min-h-80 flex-1"
         :champions="champions"

@@ -18,7 +18,7 @@ async function newDraft(p: Prep) {
 }
 
 async function remove(p: Prep) {
-  if (!confirm(`Supprimer « ${p.name} » et ses ${p.scenarioCount} draft(s) ?`)) return
+  if (!(await askConfirm(`Supprimer « ${p.name} » et ses ${p.scenarioCount} draft(s) ?`, { confirmLabel: 'Supprimer', danger: true }))) return
   await $fetch(`/api/preps/${p.id}`, { method: 'DELETE' })
   await refresh()
 }
@@ -32,7 +32,7 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
   <div class="flex flex-col gap-6">
     <div class="flex flex-wrap items-end gap-4">
       <div>
-        <h1 class="text-xl font-semibold">
+        <h1 class="text-3xl font-bold">
           Prep de draft
         </h1>
         <p class="text-sm text-zinc-400">
@@ -41,21 +41,21 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
       </div>
       <button
         type="button"
-        class="ml-auto cursor-pointer rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300"
+        class="btn-action ml-auto cursor-pointer text-sm"
         @click="create"
       >
         + Nouvelle prep
       </button>
     </div>
 
-    <div v-if="!preps?.length" class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-800 py-16 text-center">
+    <div v-if="!preps?.length" class="cut flex flex-col items-center gap-3 border-dashed py-16 text-center bg-zinc-900">
       <p class="text-zinc-300">
         Aucune prep pour l’instant
       </p>
       <p class="max-w-md text-sm text-zinc-500">
         Crée une prep pour ton prochain adversaire, puis prépare quelques drafts : engage, poke, front to back… avec des picks de secours à chaque étape.
       </p>
-      <button type="button" class="cursor-pointer rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300" @click="create">
+      <button type="button" class="btn-action cursor-pointer text-sm" @click="create">
         + Nouvelle prep
       </button>
     </div>
@@ -64,7 +64,7 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
       <article
         v-for="p in preps"
         :key="p.id"
-        class="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 transition-colors hover:border-zinc-700"
+        class="cut flex flex-col gap-3 bg-zinc-900 p-4 transition-colors hover:bg-zinc-800/70"
       >
         <header class="flex items-start gap-3">
           <NuxtLink :to="`/prep/${p.id}`" class="flex flex-1 flex-col hover:text-amber-300">
@@ -81,9 +81,9 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
           <li v-for="s in p.scenarios" :key="s.id">
             <NuxtLink
               :to="{ path: `/prep/${p.id}`, query: { s: s.id } }"
-              class="flex items-center gap-3 rounded-md border-l-4 bg-zinc-900/70 px-3 py-1.5 hover:bg-zinc-800"
-              :class="styleOf(s.color).border"
+              class="flex items-center gap-3 bg-zinc-900 px-3 py-1.5 transition-colors hover:bg-zinc-800"
             >
+              <span class="size-2 shrink-0 rounded-full" :class="styleOf(s.color).dot" />
               <span class="w-28 truncate text-sm">{{ s.name }}</span>
               <span class="w-20 text-[11px]" :class="styleOf(s.color).text">{{ styleOf(s.color).label }}</span>
               <span class="flex gap-1">
@@ -102,7 +102,7 @@ const ourPicks = (s: NonNullable<Prep['scenarios']>[number]) =>
 
         <button
           type="button"
-          class="cursor-pointer self-start rounded-md border border-dashed border-zinc-700 px-3 py-1 text-xs text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
+          class="cursor-pointer self-start px-3 py-1 text-xs text-zinc-400 hover:text-zinc-100 bg-zinc-900 hover:bg-zinc-800"
           @click="newDraft(p)"
         >
           + Nouvelle draft

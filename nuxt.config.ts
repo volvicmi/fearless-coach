@@ -19,7 +19,18 @@ export default defineNuxtConfig({
     riotMatchCount: 60, // ranked games fetched per player on first sync
   },
   app: {
-    head: { title: 'Fearless Coach' },
+    head: {
+      title: 'Fearless Coach',
+      // Polices de la charte Régie (Google Fonts, gratuites)
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Saira+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,800&display=swap',
+        },
+      ],
+    },
   },
   nitro: {
     experimental: { tasks: true },

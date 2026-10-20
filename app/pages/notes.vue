@@ -42,7 +42,7 @@ const STATE_LABEL = { saved: 'Enregistré', saving: 'Enregistrement…', unsaved
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-end gap-4">
       <div>
-        <h1 class="text-xl font-semibold">
+        <h1 class="text-3xl font-bold">
           Notes du coach
         </h1>
         <p class="text-sm text-zinc-400">
@@ -58,7 +58,7 @@ const STATE_LABEL = { saved: 'Enregistré', saving: 'Enregistrement…', unsaved
       :placeholder="PLACEHOLDER"
       spellcheck="false"
       maxlength="20000"
-      class="min-h-[70vh] w-full resize-y rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 font-mono text-sm leading-relaxed text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-amber-400"
+      class="min-h-[70vh] w-full resize-y bg-zinc-800 p-4 font-mono text-sm leading-relaxed text-zinc-200 outline-none placeholder:text-zinc-600 focus:bg-zinc-700"
     />
   </div>
 </template>

@@ -32,7 +32,7 @@ async function addScenario(copyFrom?: number) {
 }
 
 async function removeScenario(s: PrepScenario) {
-  if (!confirm(`Supprimer « ${s.name} » ?`)) return
+  if (!(await askConfirm(`Supprimer « ${s.name} » ?`, { confirmLabel: 'Supprimer', danger: true }))) return
   await $fetch(`/api/scenarios/${s.id}`, { method: 'DELETE' })
   await refresh()
   selectedId.value = data.value?.scenarios[0]?.id
@@ -52,13 +52,13 @@ async function updatePrep(body: { name?: string, opponent?: string }) {
       </NuxtLink>
       <input
         :value="data.prep.name"
-        class="w-72 rounded-md border border-transparent bg-transparent px-1 text-xl font-semibold hover:border-zinc-700 focus:border-amber-400 focus:outline-none"
+        class="w-72 border border-transparent bg-transparent px-1 text-xl font-semibold hover:bg-zinc-900 focus:bg-zinc-700 focus:outline-none"
         @change="updatePrep({ name: ($event.target as HTMLInputElement).value })"
       >
       <input
         :value="data.prep.opponent"
         placeholder="Adversaire"
-        class="w-48 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm"
+        class="w-48 rounded-md bg-zinc-800 px-2 py-1 text-sm"
         @change="updatePrep({ opponent: ($event.target as HTMLInputElement).value })"
       >
     </div>
@@ -78,7 +78,7 @@ async function updatePrep(body: { name?: string, opponent?: string }) {
         />
         <button
           type="button"
-          class="w-60 shrink-0 cursor-pointer rounded-lg border border-dashed border-zinc-700 p-3 text-sm text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 2xl:w-auto"
+          class="w-60 shrink-0 cursor-pointer p-3 text-sm text-zinc-400 hover:text-zinc-100 2xl:w-auto bg-zinc-900 hover:bg-zinc-800"
           @click="addScenario()"
         >
           + Nouvelle draft

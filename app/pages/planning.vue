@@ -70,7 +70,7 @@ async function showPreview() {
 }
 
 async function sendNow() {
-  if (!confirm('Publier maintenant le résumé de la semaine sur ton salon Discord ?')) return
+  if (!(await askConfirm('Publier maintenant le résumé de la semaine sur ton salon Discord ?', { confirmLabel: 'Publier' }))) return
   notice.value = ''
   try {
     await $fetch('/api/planning/remind', { method: 'POST', body: {} })
@@ -81,35 +81,48 @@ async function sendNow() {
   }
 }
 
+// Fenêtres secondaires : la page principale ne montre que la semaine
+const habitsOpen = ref(false)
+const settingsOpen = ref(false)
+
 const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID', adc: 'ADC', support: 'SUP' }
 </script>
 
 <template>
-  <div v-if="data" class="flex flex-col gap-6" @keydown.esc="editing = null">
+  <div v-if="data" class="flex flex-col gap-5" @keydown.esc="editing = null">
+    <!-- En-tête : titre, semaine, accès aux réglages -->
     <div class="flex flex-wrap items-end gap-4">
       <div>
-        <h1 class="text-xl font-semibold">
+        <h1 class="text-3xl font-bold">
           Planning
         </h1>
         <p class="text-sm text-zinc-400">
-          Renseigne une fois ci-dessous les jours habituels de chaque joueur, puis clique sur un jour pour noter une exception.
+          Clique sur une case pour noter une dispo ou une absence ce jour-là.
         </p>
       </div>
-      <div class="ml-auto flex items-center gap-2">
-        <button type="button" class="cursor-pointer rounded-md border border-zinc-700 px-2.5 py-1 text-sm hover:bg-zinc-800" @click="goWeek(-1)">
-          ←
-        </button>
-        <span class="w-44 text-center text-sm font-medium">Semaine du {{ label(data.week) }}</span>
-        <button type="button" class="cursor-pointer rounded-md border border-zinc-700 px-2.5 py-1 text-sm hover:bg-zinc-800" @click="goWeek(1)">
-          →
-        </button>
+      <div class="ml-auto flex flex-wrap items-center gap-2">
+        <div class="flex items-center bg-zinc-900">
+          <button type="button" class="px-3 py-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100" aria-label="Semaine précédente" @click="goWeek(-1)">
+            ←
+          </button>
+          <span class="w-40 text-center font-display text-sm font-semibold uppercase tracking-wider">Semaine du {{ label(data.week) }}</span>
+          <button type="button" class="px-3 py-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100" aria-label="Semaine suivante" @click="goWeek(1)">
+            →
+          </button>
+        </div>
         <button
           v-if="data.week !== mondayOf(new Date())"
           type="button"
-          class="cursor-pointer px-2 text-xs text-zinc-400 hover:text-zinc-100"
+          class="px-2 py-2 text-xs text-zinc-400 hover:text-zinc-100"
           @click="navigateTo({ query: {} })"
         >
           Cette semaine
+        </button>
+        <button v-if="data.players.length" type="button" class="btn-action text-sm" @click="habitsOpen = true">
+          Jours habituels
+        </button>
+        <button type="button" class="bg-zinc-800 px-4 py-2 font-display text-sm font-semibold uppercase tracking-wider transition-colors hover:bg-zinc-700" @click="settingsOpen = true">
+          Réglages &amp; Discord
         </button>
       </div>
     </div>
@@ -118,19 +131,30 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
       Ajoute d’abord tes joueurs dans l’onglet <NuxtLink to="/team" class="text-amber-300 underline">Équipe</NuxtLink>.
     </p>
 
-    <!-- Week grid -->
+    <!-- Semaine : en tête de colonne, l'état du cinq de départ ; dessous, une ligne par joueur -->
     <div v-else class="overflow-x-auto">
-      <table class="w-full min-w-[760px] table-fixed border-separate border-spacing-1 text-sm">
+      <table class="w-full min-w-[820px] table-fixed border-separate border-spacing-1.5 text-sm">
         <thead>
           <tr>
             <th class="w-44" />
-            <th
-              v-for="(d, i) in data.days"
-              :key="d"
-              class="rounded-md py-1.5 text-center text-xs font-medium"
-              :class="d === today ? 'bg-amber-400/15 text-amber-300' : 'text-zinc-400'"
-            >
-              {{ WEEKDAYS_FR[i] }} <span class="text-zinc-500">{{ label(d) }}</span>
+            <th v-for="(s, i) in summaries" :key="s.date" class="align-top font-normal">
+              <div
+                class="flex flex-col items-center gap-0.5 px-1 py-2.5 text-center"
+                :class="s.fullRoster ? 'bg-emerald-500/15' : s.available.length >= starters - 1 && starters ? 'bg-amber-400/10' : 'bg-zinc-900'"
+                :title="s.missing.length ? `Manquants : ${s.missing.map(p => p.name).join(', ')}` : 'Tout le monde est dispo'"
+              >
+                <span class="font-display text-xs font-semibold uppercase tracking-wider" :class="s.date === today ? 'text-amber-300' : 'text-zinc-400'">
+                  {{ WEEKDAYS_FR[i] }} {{ label(s.date) }}
+                </span>
+                <span
+                  class="font-display text-2xl font-bold leading-tight tabular-nums"
+                  :class="s.fullRoster ? 'text-emerald-300' : s.available.length >= starters - 1 && starters ? 'text-amber-200' : 'text-zinc-500'"
+                >{{ s.available.length }}/{{ starters }}</span>
+                <span class="h-4 max-w-full truncate text-[11px]" :class="s.fullRoster ? 'text-emerald-300/80' : 'text-zinc-500'">
+                  <template v-if="s.fullRoster && s.commonStart">Scrim dès {{ s.commonStart }}</template>
+                  <template v-else-if="s.missing.length">Manque {{ s.missing.map(p => p.name).join(', ') }}</template>
+                </span>
+              </div>
             </th>
           </tr>
         </thead>
@@ -138,48 +162,45 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
           <tr v-for="p in data.players" :key="p.id">
             <td class="pr-2">
               <span class="flex items-center gap-2">
-                <span class="w-7 text-[10px] font-bold text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>
-                <span class="truncate">{{ p.name }}</span>
-                <span v-if="p.status === 'sub'" class="rounded bg-zinc-800 px-1 text-[10px] uppercase text-zinc-400">remp.</span>
+                <span class="w-8 font-display text-[11px] font-bold tracking-wider text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>
+                <span class="truncate font-medium">{{ p.name }}</span>
+                <span v-if="p.status === 'sub'" class="bg-zinc-800 px-1 text-[10px] uppercase text-zinc-400">remp.</span>
               </span>
             </td>
             <td v-for="d in data.days" :key="d" class="relative">
               <button
                 type="button"
-                class="flex h-10 w-full cursor-pointer items-center justify-center gap-1 rounded-md border text-xs transition-colors"
-                :class="[
-                  availabilityOn(p, d).available === true ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
-                  : availabilityOn(p, d).available === false ? 'border-red-500/40 bg-red-500/10 text-red-300'
-                    : 'border-zinc-800 bg-zinc-900/40 text-zinc-600 hover:text-zinc-300',
-                  editing?.playerId === p.id && editing.date === d && 'ring-2 ring-amber-400',
-                ]"
+                class="flex h-11 w-full items-center justify-center gap-1.5 text-xs font-medium transition-colors"
+                :class="editing?.playerId === p.id && editing.date === d
+                  ? 'tab-on'
+                  : availabilityOn(p, d).available === true ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25' : availabilityOn(p, d).available === false ? 'bg-red-500/10 text-red-300 hover:bg-red-500/20' : 'bg-zinc-900 text-zinc-600 hover:bg-zinc-800 hover:text-zinc-300'"
                 :title="availabilityOn(p, d).source === 'habit' ? 'Jour habituel' : availabilityOn(p, d).source === 'exception' ? 'Exception pour cette date' : 'Pas d’info'"
                 @click="openCell(p, d)"
               >
                 <template v-if="availabilityOn(p, d).available === true">✓ {{ availabilityOn(p, d).start }}</template>
-                <template v-else-if="availabilityOn(p, d).available === false">✗</template>
-                <template v-else>?</template>
-                <span v-if="availabilityOn(p, d).source === 'exception'" class="size-1.5 rounded-full bg-amber-400" />
+                <template v-else-if="availabilityOn(p, d).available === false">✗ Absent</template>
+                <template v-else>–</template>
+                <span v-if="availabilityOn(p, d).source === 'exception'" class="size-1.5 rounded-full bg-amber-400" title="Exception pour cette date" />
               </button>
 
-              <!-- Cell editor -->
+              <!-- Éditeur d'une case -->
               <div
                 v-if="editing?.playerId === p.id && editing.date === d"
-                class="absolute left-1/2 top-11 z-20 flex w-48 -translate-x-1/2 flex-col gap-2 rounded-lg border border-zinc-700 bg-zinc-900 p-2 shadow-xl"
+                class="absolute left-1/2 top-12 z-20 flex w-52 -translate-x-1/2 flex-col gap-2 bg-zinc-800 p-3 shadow-xl shadow-black/50"
               >
                 <div class="flex items-center gap-2">
-                  <input v-model="editTime" type="time" class="flex-1 rounded border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 text-xs">
-                  <button type="button" class="cursor-pointer rounded bg-emerald-600 px-2 py-1 text-xs font-semibold hover:bg-emerald-500" @click="setDay(true)">
+                  <input v-model="editTime" type="time" class="flex-1 bg-zinc-900 px-2 py-1 text-xs">
+                  <button type="button" class="bg-emerald-600 px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-emerald-500" @click="setDay(true)">
                     ✓ Dispo
                   </button>
                 </div>
-                <button type="button" class="cursor-pointer rounded bg-red-600/80 px-2 py-1 text-xs font-semibold hover:bg-red-500" @click="setDay(false)">
+                <button type="button" class="bg-red-600/80 px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-red-500" @click="setDay(false)">
                   ✗ Pas dispo
                 </button>
                 <button
                   v-if="availabilityOn(p, d).source === 'exception'"
                   type="button"
-                  class="cursor-pointer rounded px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                  class="px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
                   @click="setDay(null)"
                 >
                   ↺ Comme d’habitude
@@ -188,98 +209,93 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
             </td>
           </tr>
         </tbody>
-        <tfoot>
-          <tr>
-            <td class="pr-2 pt-2 text-xs text-zinc-500">
-              Cinq de départ
-            </td>
-            <td v-for="s in summaries" :key="s.date" class="pt-2">
-              <div
-                class="flex flex-col items-center rounded-md px-1 py-1.5 text-center text-xs"
-                :class="s.fullRoster ? 'bg-emerald-500/20 text-emerald-300' : s.available.length >= starters - 1 && starters ? 'bg-amber-400/10 text-amber-300' : 'bg-zinc-900/60 text-zinc-500'"
-                :title="s.missing.length ? `Manquants : ${s.missing.map(p => p.name).join(', ')}` : 'Tout le monde est dispo'"
-              >
-                <span class="font-semibold">{{ s.available.length }}/{{ starters }}</span>
-                <span v-if="s.fullRoster && s.commonStart" class="text-[10px]">dès {{ s.commonStart }}</span>
-                <span v-else-if="s.missing.length" class="max-w-full truncate text-[10px]">− {{ s.missing.map(p => p.name).join(', ') }}</span>
-              </div>
-            </td>
-          </tr>
-        </tfoot>
       </table>
+      <p class="mt-2 flex flex-wrap gap-4 text-[11px] text-zinc-500">
+        <span><span class="text-emerald-300">✓</span> dispo (heure de début)</span>
+        <span><span class="text-red-300">✗</span> absent</span>
+        <span>– pas d’info</span>
+        <span class="flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-amber-400" /> exception pour cette date</span>
+      </p>
     </div>
 
-    <!-- Usual days -->
-    <section v-if="data.players.length" class="flex flex-col gap-2">
-      <h2 class="font-semibold">
-        Jours habituels <span class="text-sm font-normal text-zinc-500">· répétés chaque semaine, les exceptions ci-dessus priment</span>
-      </h2>
+    <!-- Jours habituels (fenêtre) -->
+    <AppModal v-model="habitsOpen" title="Jours habituels" wide>
+      <p class="-mt-2 text-sm text-zinc-400">
+        Répétés chaque semaine. Clique sur un jour pour l’activer, puis ajuste l’heure. Une exception notée dans la semaine passe devant.
+      </p>
       <div class="flex flex-col gap-1.5">
-        <div v-for="p in data.players" :key="p.id" class="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2">
-          <span class="w-40 truncate text-sm">{{ p.name }}</span>
+        <div class="grid grid-cols-[10rem_repeat(7,minmax(0,1fr))] gap-1.5 px-3 font-display text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+          <span />
+          <span v-for="day in WEEKDAYS_FR" :key="day" class="text-center">{{ day }}</span>
+        </div>
+        <div v-for="p in data.players" :key="p.id" class="grid grid-cols-[10rem_repeat(7,minmax(0,1fr))] items-start gap-1.5 bg-zinc-950/60 px-3 py-2.5">
+          <span class="flex h-8 items-center gap-2 truncate text-sm">
+            <span class="w-8 font-display text-[11px] font-bold tracking-wider text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>{{ p.name }}
+          </span>
           <div v-for="(day, i) in WEEKDAYS_FR" :key="day" class="flex flex-col items-center gap-1">
             <button
               type="button"
-              class="w-14 cursor-pointer rounded-md border py-1 text-xs"
-              :class="p.habits[i] ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300' : 'border-zinc-800 text-zinc-500 hover:text-zinc-200'"
+              class="h-8 w-full text-xs font-medium transition-colors"
+              :class="p.habits[i] ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-200'"
+              :aria-pressed="!!p.habits[i]"
               @click="toggleHabit(p, i)"
             >
-              {{ day }}
+              {{ p.habits[i] ? '✓' : day }}
             </button>
             <input
               v-if="p.habits[i]"
               :value="p.habits[i]"
               type="time"
-              class="w-14 rounded border border-zinc-800 bg-transparent px-0.5 text-center text-[10px] text-zinc-400"
+              class="w-full bg-transparent text-center text-[11px] text-zinc-400"
               @change="setHabitTime(p, i, ($event.target as HTMLInputElement).value)"
             >
           </div>
         </div>
       </div>
-    </section>
+    </AppModal>
 
-    <!-- Settings + Discord -->
-    <section v-if="settings" class="grid gap-4 rounded-xl border border-zinc-800 p-4 lg:grid-cols-2">
+    <!-- Réglages + Discord (fenêtre) -->
+    <AppModal v-if="settings" v-model="settingsOpen" title="Réglages & Discord">
       <div class="flex flex-col gap-3">
-        <h2 class="font-semibold">
+        <h3 class="font-display text-sm font-bold uppercase tracking-wider text-zinc-400">
           Réglages
-        </h2>
+        </h3>
         <label class="flex items-center gap-3 text-sm">
           <span class="w-40 text-zinc-400">Heure par défaut</span>
           <input
             :value="settings.defaultTime"
             type="time"
-            class="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+            class="bg-zinc-800 px-2 py-1.5"
             @change="saveSettings({ defaultTime: ($event.target as HTMLInputElement).value })"
           >
         </label>
         <label class="flex items-center gap-3 text-sm">
-          <span class="w-40 text-zinc-400">Lien dans le message</span>
+          <span class="w-40 shrink-0 text-zinc-400">Lien dans le message</span>
           <input
             :value="settings.publicUrl"
             placeholder="Où les joueurs remplissent leurs dispos (optionnel)"
-            class="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+            class="min-w-0 flex-1 bg-zinc-800 px-2 py-1.5"
             @change="saveSettings({ publicUrl: ($event.target as HTMLInputElement).value })"
           >
         </label>
       </div>
 
       <div class="flex flex-col gap-3">
-        <h2 class="font-semibold">
+        <h3 class="font-display text-sm font-bold uppercase tracking-wider text-zinc-400">
           Rappel Discord
-        </h2>
+        </h3>
         <form class="flex items-center gap-2 text-sm" @submit.prevent="saveSettings({ webhook })">
           <input
             v-model="webhook"
             type="password"
             autocomplete="off"
             :placeholder="settings.hasWebhook ? 'Webhook configuré ✓ (colles-en un nouveau pour le remplacer)' : 'URL du webhook Discord'"
-            class="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+            class="min-w-0 flex-1 bg-zinc-800 px-2 py-1.5"
           >
-          <button class="cursor-pointer rounded-md border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800">
+          <button class="bg-zinc-800 px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-zinc-700">
             Enregistrer
           </button>
-          <button v-if="settings.hasWebhook" type="button" class="cursor-pointer text-xs text-zinc-500 hover:text-red-400" @click="saveSettings({ webhook: '' })">
+          <button v-if="settings.hasWebhook" type="button" class="text-xs text-zinc-500 hover:text-red-400" @click="saveSettings({ webhook: '' })">
             Retirer
           </button>
         </form>
@@ -287,7 +303,7 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
           <span class="text-zinc-400">Publier le résumé de la semaine chaque</span>
           <select
             :value="settings.reminderDay"
-            class="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+            class="bg-zinc-800 px-2 py-1.5"
             @change="saveSettings({ reminderDay: ($event.target as HTMLSelectElement).value })"
           >
             <option value="off">
@@ -303,7 +319,7 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
           <span class="text-zinc-400">à</span>
           <select
             :value="settings.reminderHour"
-            class="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+            class="bg-zinc-800 px-2 py-1.5"
             @change="saveSettings({ reminderHour: Number(($event.target as HTMLSelectElement).value) })"
           >
             <option v-for="h in 24" :key="h" :value="h - 1">
@@ -312,12 +328,12 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
           </select>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button type="button" class="cursor-pointer rounded-md border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800" @click="showPreview">
+          <button type="button" class="bg-zinc-800 px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-zinc-700" @click="showPreview">
             Aperçu du message
           </button>
           <button
             type="button"
-            class="cursor-pointer rounded-md bg-indigo-500 px-3 py-1 text-xs font-semibold hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
+            class="btn-action text-xs disabled:cursor-not-allowed disabled:opacity-40"
             :disabled="!settings.hasWebhook"
             @click="sendNow"
           >
@@ -328,8 +344,8 @@ const ROLE_SHORT: Record<string, string> = { top: 'TOP', jungle: 'JGL', mid: 'MI
         <p class="text-[11px] text-zinc-500">
           Envoyé automatiquement tant que l’app tourne.<template v-if="settings.lastReminder"> Dernier rappel automatique : semaine du {{ label(settings.lastReminder) }}.</template>
         </p>
-        <pre v-if="preview" class="whitespace-pre-wrap rounded-md bg-zinc-900 p-3 text-xs text-zinc-300">{{ preview }}</pre>
+        <pre v-if="preview" class="whitespace-pre-wrap bg-zinc-950 p-3 text-xs text-zinc-300">{{ preview }}</pre>
       </div>
-    </section>
+    </AppModal>
   </div>
 </template>

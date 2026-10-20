@@ -27,7 +27,7 @@ defineProps<{
       {{ comp.archetype }}
     </p>
     <div>
-      <h4 class="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+      <h4 class="text-[11px] font-semibold uppercase font-display tracking-wider text-zinc-500">
         Conditions de victoire
       </h4>
       <ul class="list-inside list-disc text-xs text-zinc-300">
@@ -43,7 +43,7 @@ defineProps<{
       <span class="font-semibold text-zinc-400">Plan de jeu :</span> {{ comp.gamePlan }}
     </p>
     <div>
-      <h4 class="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+      <h4 class="text-[11px] font-semibold uppercase font-display tracking-wider text-zinc-500">
         {{ isUs ? 'Comment ils peuvent nous battre' : 'Comment les battre' }}
       </h4>
       <ul class="list-inside list-disc text-xs text-zinc-300">

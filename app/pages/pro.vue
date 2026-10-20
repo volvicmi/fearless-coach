@@ -77,7 +77,7 @@ async function add() {
 }
 
 async function remove(name: string) {
-  if (!confirm(`Retirer « ${name} » et ses données importées ?`)) return
+  if (!(await askConfirm(`Retirer « ${name} » et ses données importées ?`, { confirmLabel: 'Retirer', danger: true }))) return
   await $fetch(`/api/pro/tournaments/${encodeURIComponent(name)}`, { method: 'DELETE' })
   await refresh()
 }
@@ -89,7 +89,7 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
 <template>
   <div class="flex flex-col gap-6">
     <div>
-      <h1 class="text-xl font-semibold">
+      <h1 class="text-3xl font-bold">
         Méta pro
       </h1>
       <p class="text-sm text-zinc-400">
@@ -101,7 +101,7 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
       <div
         v-for="t in data?.tournaments"
         :key="t.name"
-        class="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-800 px-4 py-3"
+        class="cut flex flex-wrap items-center gap-3 px-4 py-3 bg-zinc-900"
       >
         <a
           :href="`https://gol.gg/tournament/tournament-stats/${encodeURIComponent(t.name)}/`"
@@ -112,7 +112,7 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
         <button
           type="button"
           class="cursor-pointer rounded-full border px-2 py-0.5 text-[11px]"
-          :class="data?.current === t.name ? 'border-amber-400 bg-amber-400/15 text-amber-300' : 'border-zinc-800 text-zinc-500 hover:text-zinc-200'"
+          :class="data?.current === t.name ? 'tab-on' : 'border-transparent text-zinc-500 hover:text-zinc-200 bg-zinc-900'"
           :title="data?.current === t.name ? 'Cliquer pour retirer' : 'Le tournoi que nous jouons en ce moment'"
           @click="setCurrent(t.name)"
         >
@@ -127,7 +127,7 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
         </span>
         <button
           type="button"
-          class="ml-auto cursor-pointer rounded-md border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800 disabled:opacity-40"
+          class="ml-auto cursor-pointer px-3 py-1 text-xs disabled:opacity-40 bg-zinc-800 hover:bg-zinc-700 font-display font-semibold uppercase tracking-wider"
           :disabled="statuses[t.name]?.state === 'running'"
           @click="sync(t.name)"
         >
@@ -142,9 +142,9 @@ const wrClass = (wr: number) => (wr >= 0.55 ? 'text-emerald-400' : wr < 0.45 ? '
         <input
           v-model="newName"
           placeholder="Nom du tournoi sur gol.gg, ex. LCK 2026 Rounds 1-2"
-          class="w-96 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm"
+          class="w-96 rounded-md bg-zinc-800 px-3 py-1.5 text-sm"
         >
-        <button class="cursor-pointer rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300">
+        <button class="btn-action cursor-pointer text-sm">
           Ajouter un tournoi
         </button>
       </form>

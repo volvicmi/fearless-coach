@@ -129,7 +129,7 @@ watch(notes, (text) => {
       <span class="size-3 rounded-full" :class="styleOf(scenario.color).dot" />
       <input
         :value="scenario.name"
-        class="w-64 rounded-md border border-transparent bg-transparent px-1 text-lg font-semibold hover:border-zinc-700 focus:border-amber-400 focus:outline-none"
+        class="w-64 border border-transparent bg-transparent px-1 text-lg font-semibold hover:bg-zinc-900 focus:bg-zinc-700 focus:outline-none"
         @change="emit('update', { name: ($event.target as HTMLInputElement).value })"
       >
       <div class="flex gap-1">
@@ -159,7 +159,7 @@ watch(notes, (text) => {
         </button>
       </div>
       <div class="ml-auto flex gap-2">
-        <button type="button" class="cursor-pointer rounded-md border border-zinc-700 px-3 py-1 text-xs hover:bg-zinc-800" @click="emit('duplicate')">
+        <button type="button" class="cursor-pointer px-3 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 font-display font-semibold uppercase tracking-wider" @click="emit('duplicate')">
           Dupliquer
         </button>
         <button type="button" class="cursor-pointer rounded-md px-3 py-1 text-xs text-zinc-500 hover:text-red-400" @click="emit('remove')">
@@ -190,7 +190,7 @@ watch(notes, (text) => {
               class="flex cursor-pointer items-center gap-3 rounded-lg border px-3 transition-colors"
               :class="[
                 phase.isBan ? 'min-h-12 py-1' : 'min-h-[4.5rem] py-1.5',
-                selected === item.i ? 'border-amber-400 bg-amber-400/5' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700',
+                selected === item.i ? 'bg-amber-400/5 tab-on' : 'border-transparent bg-zinc-900 hover:bg-zinc-800',
               ]"
               @click="selected = item.i"
             >
@@ -242,7 +242,7 @@ watch(notes, (text) => {
       </section>
 
       <!-- Champion list: drag source, and drop back here to remove -->
-      <aside data-tier-drop="remove" class="flex flex-col gap-2 rounded-lg border border-zinc-800 p-3 xl:sticky xl:top-4 xl:h-[720px]">
+      <aside data-tier-drop="remove" class="cut flex flex-col gap-2 p-3 xl:sticky xl:top-4 xl:h-[720px] bg-zinc-900">
         <p class="text-xs text-zinc-400">
           Étape en cours : <span class="font-semibold text-amber-300">{{ label(selected) }}</span>
           <span class="text-zinc-600">(étape {{ selected + 1 }})</span> · clic ou Entrée ajoute ici · glisse n’importe où sur la draft
@@ -263,7 +263,7 @@ watch(notes, (text) => {
       v-model="notes"
       rows="3"
       placeholder="Notes pour cette draft : condition de victoire, que faire s’ils prennent X, swaps…"
-      class="w-full select-text resize-y rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm outline-none placeholder:text-zinc-600 focus:border-amber-400"
+      class="w-full select-text resize-y bg-zinc-800 p-3 text-sm outline-none placeholder:text-zinc-600 focus:bg-zinc-700"
     />
   </div>
 </template>

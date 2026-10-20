@@ -14,7 +14,7 @@ const ACTIVE = {
 </script>
 
 <template>
-  <div role="radiogroup" class="inline-flex rounded-lg border border-zinc-700 bg-zinc-900 p-0.5">
+  <div role="radiogroup" class="inline-flex rounded-lg bg-zinc-800 p-0.5">
     <button
       v-for="o in options"
       :key="o.value"

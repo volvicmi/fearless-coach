@@ -91,10 +91,14 @@ Data Dragon (Riot) : champions et icônes
 - **gol.gg** : **exception assumée** à la règle « pas de scraping ». Pages autorisées par leur robots.txt, une requête par seconde, User-Agent honnête, cache en base (une série terminée n'est jamais relue).
 - Aucun autre site de stats (lolalytics, u.gg, op.gg…) sans en discuter d'abord.
 
-## 7. Design
+## 7. Design (charte « Régie », Opif Gaming)
 
-- Thème sombre (zinc) avec accents ambre/or, côté bleu et côté rouge bien distincts (`--color-side-blue`, `--color-side-red`).
-- Cible possible plus tard, inspirée du client LoL sans éléments protégés : fonds `#010A13` / `#0A1428`, or `#C8AA6E` / `#C89B3C`, texte `#F0E6D2`, hextech `#0AC8B9`, polices Cinzel/Marcellus + Inter (jamais Beaufort ni Spiegel).
+- **Thème sombre uniquement.** Graphite légèrement bleuté ; la gamme `zinc` de Tailwind est redéfinie dans `app/assets/css/main.css` (950 = fond `#0B0D13`, 900 = surface `#131620`, 800 = relief `#1C2030`), et la gamme `amber` = violet de la corne (400 = `#A99CFF`). Utiliser ces classes, pas de couleurs en dur.
+- **Aucune bordure autour des blocs** : un panneau se détache par sa teinte (`bg-zinc-900` sur le fond). Classe `cut` = coin haut droit coupé.
+- **Action principale** : classe `btn-action` (dégradé de la corne, parallélogramme). Secondaire : `bg-zinc-800` en capitales. Champ actif et puce sélectionnée : filet violet en bas (`shadow-[inset_0_-2px_0_var(--color-amber-400)]`).
+- **Typo** : Saira Condensed (`font-display`, capitales) pour titres, onglets, scores ; Barlow pour le texte. Chargées depuis Google Fonts (`nuxt.config.ts`).
+- Côtés : bandeaux pleins `bg-side-blue` / `bg-side-red`, texte blanc. Dégradé de la corne (`--horn`) réservé à ce qui est actif.
+- Référence visuelle : `../charte/propositions/charte-opif.html` (variante C2 Régie).
 - Interdit : logos Riot/LoL, assets du client hors Data Dragon.
 - Pied de page légal obligatoire (« Legal Jibber Jabber » de Riot), en français.
 - Pas de texte sélectionnable pendant les glisser-déposer ; curseur pointer sur tout ce qui est cliquable.

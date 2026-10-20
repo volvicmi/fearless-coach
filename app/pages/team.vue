@@ -34,7 +34,7 @@ const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID'
   <div class="flex flex-col gap-5">
     <div class="flex flex-wrap items-end gap-4">
       <div>
-        <h1 class="text-xl font-semibold">
+        <h1 class="text-3xl font-bold">
           Équipe
         </h1>
         <p class="text-sm text-zinc-400">
@@ -42,29 +42,29 @@ const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID'
         </p>
       </div>
       <form class="ml-auto flex gap-2" @submit.prevent="addPlayer">
-        <input v-model="form.name" placeholder="Nom du joueur" class="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm">
-        <select v-model="form.role" class="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm capitalize">
+        <input v-model="form.name" placeholder="Nom du joueur" class="rounded-md bg-zinc-800 px-3 py-1.5 text-sm">
+        <select v-model="form.role" class="rounded-md bg-zinc-800 px-2 py-1.5 text-sm capitalize">
           <option v-for="r in ROLES" :key="r" :value="r">
             {{ r }}
           </option>
         </select>
-        <button class="rounded-md bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300">
+        <button class="btn-action text-sm">
           Ajouter un joueur
         </button>
       </form>
     </div>
 
     <!-- One tab per player -->
-    <nav v-if="team?.length" class="flex flex-wrap gap-2 border-b border-zinc-800 pb-3">
+    <nav v-if="team?.length" class="flex flex-wrap items-center gap-1 bg-zinc-900 p-1.5">
       <button
         v-for="p in team"
         :key="p.id"
         type="button"
-        class="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm"
-        :class="view === 'player' && p.id === selected?.id ? 'border-amber-400 bg-zinc-900 text-zinc-100' : 'border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200'"
+        class="flex items-center gap-2 px-3.5 py-2 text-sm transition-colors"
+        :class="view === 'player' && p.id === selected?.id ? 'tab-on' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'"
         @click="openPlayer(p.id)"
       >
-        <span class="text-[10px] font-bold text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>
+        <span class="font-display text-[11px] font-bold tracking-wider text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>
         {{ p.name }}
         <span v-if="p.status === 'sub'" class="rounded bg-zinc-800 px-1 text-[10px] uppercase text-zinc-400">remp.</span>
         <span class="text-xs text-zinc-500">{{ p.pool.filter(e => e.tier !== 'P').length }}</span>
@@ -74,8 +74,8 @@ const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID'
       </span>
       <button
         type="button"
-        class="ml-auto flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm"
-        :class="view === 'combos' ? 'border-amber-400 bg-zinc-900 text-zinc-100' : 'border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200'"
+        class="ml-auto flex items-center gap-2 px-3.5 py-2 text-sm transition-colors"
+        :class="view === 'combos' ? 'tab-on' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'"
         @click="view = 'combos'"
       >
         Combos

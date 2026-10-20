@@ -64,13 +64,13 @@ async function nextGame() {
   <div v-if="data" class="flex flex-col gap-5">
     <div class="flex flex-wrap items-center gap-4">
       <div>
-        <h1 class="text-xl font-semibold">
+        <h1 class="text-3xl font-bold">
           {{ series.name }}
         </h1>
         <p class="text-sm text-zinc-400">
           vs {{ series.opponent || '?' }} · {{ series.format }} ·
           {{ series.fearless === 'off' ? 'Draft normale' : 'Fearless' }} ·
-          <span class="font-semibold text-zinc-200">{{ score.us }} – {{ score.them }}</span>
+          <span class="font-display text-lg font-bold tabular-nums text-amber-300">{{ score.us }} – {{ score.them }}</span>
         </p>
       </div>
 
@@ -91,7 +91,7 @@ async function nextGame() {
         <button
           v-if="canAddGame"
           type="button"
-          class="rounded-md border border-dashed border-zinc-700 px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-100"
+          class="px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-100 bg-zinc-900 hover:bg-zinc-800"
           @click="nextGame"
         >
           + Game suivante

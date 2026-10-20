@@ -7,6 +7,8 @@ import type { DropTarget } from '~/composables/useChampionDrag'
 
 interface TraitEntry { criterion: CriterionId, champId: string, tier: Tier, position: number }
 
+definePageMeta({ fitScreen: true })
+
 const { champions, byId, iconUrl } = await useChampions()
 const nameOf = (id: string) => byId.value.get(id)?.name ?? id
 const { data: entries, refresh } = await useFetch<TraitEntry[]>('/api/traits')
@@ -21,10 +23,10 @@ const ROLES: { id: Role, label: string }[] = [
   { id: 'support', label: 'Support' },
 ]
 const TIER_STYLE: Record<Tier, string> = {
-  S: 'bg-amber-500 text-zinc-950',
-  A: 'bg-emerald-600 text-white',
-  B: 'bg-zinc-600 text-white',
-  C: 'bg-zinc-800 text-zinc-300',
+  S: 'bg-tier-s text-zinc-950',
+  A: 'bg-tier-a text-zinc-950',
+  B: 'bg-tier-b text-zinc-950',
+  C: 'bg-tier-c text-zinc-950',
 }
 
 const role = ref<Role | null>(null)
@@ -75,9 +77,9 @@ useChampionDrag(board, (champId: string, target: DropTarget, index?: number) =>
 </script>
 
 <template>
-  <div ref="board" class="flex flex-col gap-4 select-none">
+  <div ref="board" class="flex min-h-0 flex-1 flex-col gap-4 select-none">
     <div>
-      <h1 class="text-xl font-semibold">
+      <h1 class="text-3xl font-bold">
         Champions
       </h1>
       <p class="text-sm text-zinc-400">
@@ -112,68 +114,72 @@ useChampionDrag(board, (champId: string, target: DropTarget, index?: number) =>
         {{ c.label }}
       </button>
     </div>
-    <p v-if="hint" class="text-xs text-zinc-500">
-      {{ hint }}
+    <!-- Ligne toujours présente : les filtres ne font pas sauter la mise en page -->
+    <p class="min-h-4 text-xs text-zinc-500">
+      <template v-if="hint">{{ hint }}</template>
+      <template v-else-if="!criterion">{{ alphabetical.length }} champions</template>
     </p>
 
-    <!-- With a criterion: editable tier list, same behaviour as the Team tab -->
-    <div v-if="criterion" class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div class="flex flex-col gap-2">
-        <div
-          v-for="g in byTier"
-          :key="g.tier"
-          :data-tier-drop="g.tier"
-          class="flex min-h-[72px] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40 transition-colors"
-        >
-          <div class="flex w-16 shrink-0 items-center justify-center text-2xl font-black" :class="TIER_STYLE[g.tier]">
-            {{ g.tier }}
-          </div>
-          <div data-tier-items class="flex flex-1 flex-wrap content-start items-start gap-2 p-2">
-            <span v-if="!g.entries.length" class="self-center px-2 text-xs text-zinc-600">Dépose des champions ici</span>
-            <div v-for="e in g.entries" :key="e.champId" class="group relative w-16">
-              <div
-                :data-drag-champ="e.champId"
-                :data-drag-from="g.tier"
-                class="flex cursor-grab touch-none flex-col items-center gap-0.5 rounded-md p-1 hover:bg-zinc-800 active:cursor-grabbing"
-                :title="`${nameOf(e.champId)} · glisse pour réordonner (à gauche = le plus fort)`"
-              >
-                <img :src="iconUrl(e.champId)" :alt="nameOf(e.champId)" draggable="false" class="size-12 select-none rounded-md">
-                <span class="w-full truncate text-center text-[10px] text-zinc-400">{{ nameOf(e.champId) }}</span>
+    <input v-if="!criterion" v-model="search" type="search" placeholder="Chercher…" class="w-44 rounded-md bg-zinc-800 px-3 py-1.5 text-sm">
+
+    <!-- Seule la liste défile ; la gouttière stable évite le décalage quand la barre apparaît -->
+    <div class="-mr-2 min-h-0 flex-1 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
+      <!-- With a criterion: editable tier list, same behaviour as the Team tab -->
+      <div v-if="criterion" class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div class="flex flex-col gap-2">
+          <div
+            v-for="g in byTier"
+            :key="g.tier"
+            :data-tier-drop="g.tier"
+            class="flex min-h-[72px] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40 transition-colors"
+          >
+            <div class="flex w-16 shrink-0 items-center justify-center text-2xl font-black" :class="TIER_STYLE[g.tier]">
+              {{ g.tier }}
+            </div>
+            <div data-tier-items class="flex flex-1 flex-wrap content-start items-start gap-2 p-2">
+              <span v-if="!g.entries.length" class="self-center px-2 text-xs text-zinc-600">Dépose des champions ici</span>
+              <div v-for="e in g.entries" :key="e.champId" class="group relative w-16">
+                <div
+                  :data-drag-champ="e.champId"
+                  :data-drag-from="g.tier"
+                  class="flex cursor-grab touch-none flex-col items-center gap-0.5 rounded-md p-1 hover:bg-zinc-800 active:cursor-grabbing"
+                  :title="`${nameOf(e.champId)} · glisse pour réordonner (à gauche = le plus fort)`"
+                >
+                  <img :src="iconUrl(e.champId)" :alt="nameOf(e.champId)" draggable="false" class="size-12 select-none rounded-md">
+                  <span class="w-full truncate text-center text-[10px] text-zinc-400">{{ nameOf(e.champId) }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="absolute -right-1 -top-1 hidden size-5 cursor-pointer place-items-center rounded-full bg-zinc-950 text-xs leading-none text-zinc-400 shadow ring-1 ring-zinc-700 hover:bg-red-600 hover:text-white group-hover:grid"
+                  :title="`Retirer ${nameOf(e.champId)}`"
+                  @click="removeChamp(e.champId)"
+                >
+                  ×
+                </button>
               </div>
-              <button
-                type="button"
-                class="absolute -right-1 -top-1 hidden size-5 cursor-pointer place-items-center rounded-full bg-zinc-950 text-xs leading-none text-zinc-400 shadow ring-1 ring-zinc-700 hover:bg-red-600 hover:text-white group-hover:grid"
-                :title="`Retirer ${nameOf(e.champId)}`"
-                @click="removeChamp(e.champId)"
-              >
-                ×
-              </button>
             </div>
           </div>
         </div>
+
+        <!-- Side panel: add from here, and the "remove" drop zone -->
+        <aside data-tier-drop="remove" class="flex flex-col gap-2 rounded-lg border border-zinc-800 p-3 transition-colors">
+          <ChampionGrid
+            class="min-h-80 flex-1"
+            :champions="pickable"
+            :disabled="placed"
+            :icon-url="iconUrl"
+            :active="true"
+            drag-source
+            @select="id => setTier(id, 'B')"
+          />
+          <p class="text-center text-[11px] text-zinc-600">
+            Clic ou Entrée ajoute en B · glisse sur une ligne pour placer · lâche ici pour retirer
+          </p>
+        </aside>
       </div>
 
-      <!-- Side panel: add from here, and the "remove" drop zone -->
-      <aside data-tier-drop="remove" class="flex flex-col gap-2 rounded-lg border border-zinc-800 p-3 transition-colors">
-        <ChampionGrid
-          class="min-h-80 flex-1"
-          :champions="pickable"
-          :disabled="placed"
-          :icon-url="iconUrl"
-          :active="true"
-          drag-source
-          @select="id => setTier(id, 'B')"
-        />
-        <p class="text-center text-[11px] text-zinc-600">
-          Clic ou Entrée ajoute en B · glisse sur une ligne pour placer · lâche ici pour retirer
-        </p>
-      </aside>
-    </div>
-
-    <!-- Without a criterion: plain list -->
-    <div v-else class="flex flex-col gap-3">
-      <input v-model="search" type="search" placeholder="Chercher…" class="w-44 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm">
-      <div class="flex flex-wrap gap-2">
+      <!-- Without a criterion: plain list -->
+      <div v-else class="flex flex-wrap content-start gap-2">
         <div v-for="c in alphabetical" :key="c.id" class="flex w-16 flex-col items-center gap-1" :title="c.name">
           <img :src="iconUrl(c.id)" :alt="c.name" class="h-12 w-12 rounded-md">
           <span class="w-full truncate text-center text-[11px] text-zinc-300">{{ c.name }}</span>

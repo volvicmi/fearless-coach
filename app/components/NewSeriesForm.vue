@@ -65,12 +65,12 @@ async function create() {
   }
 }
 
-const INPUT = 'rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm outline-none placeholder:text-zinc-600 focus:border-amber-400'
+const INPUT = 'bg-zinc-800 px-3 py-2 text-sm outline-none placeholder:text-zinc-600 transition-colors focus:bg-zinc-700'
 const FIELD_LABEL = 'text-xs font-medium uppercase tracking-wider text-zinc-500'
 </script>
 
 <template>
-  <form class="flex flex-col gap-6 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5" @submit.prevent="create">
+  <form class="cut flex flex-col gap-6 bg-zinc-900 p-5" @submit.prevent="create">
     <!-- 1. Le mode -->
     <fieldset class="flex flex-col gap-3">
       <legend class="mb-1 text-sm font-semibold">
@@ -84,7 +84,7 @@ const FIELD_LABEL = 'text-xs font-medium uppercase tracking-wider text-zinc-500'
           role="radio"
           :aria-checked="mode === m.value"
           class="flex cursor-pointer gap-4 rounded-xl border p-4 text-left transition-colors"
-          :class="mode === m.value ? 'border-amber-400 bg-amber-400/5' : 'border-zinc-800 hover:border-zinc-600'"
+          :class="mode === m.value ? 'tab-on' : 'border-transparent hover:bg-zinc-800 bg-zinc-900'"
           @click="mode = m.value"
         >
           <span class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-amber-300">
@@ -163,7 +163,7 @@ const FIELD_LABEL = 'text-xs font-medium uppercase tracking-wider text-zinc-500'
       <button
         type="submit"
         :disabled="busy"
-        class="cursor-pointer rounded-lg bg-amber-400 px-5 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-300 disabled:cursor-wait disabled:opacity-60"
+        class="btn-action cursor-pointer text-sm disabled:cursor-wait disabled:opacity-60"
       >
         {{ busy ? 'Création…' : mode === 'duel' ? 'Lancer le duel' : 'Lancer la série' }}
       </button>

@@ -3,6 +3,7 @@ import type { Series, SeriesMode } from '#shared/types'
 
 const { data: series, refresh } = await useFetch<Series[]>('/api/series')
 useLive('series', () => refresh())
+const { iconUrl } = await useChampions()
 
 // Le formulaire est ouvert d'office tant qu'il n'y a aucune série.
 const creating = ref(!series.value?.length)
@@ -22,7 +23,7 @@ const groups = computed(() => [
 ].filter(g => g.items.length))
 
 async function remove(s: Series) {
-  if (!confirm(`Supprimer « ${s.name} » et ses games ?`)) return
+  if (!(await askConfirm(`Supprimer « ${s.name} » et ses games ?`, { confirmLabel: 'Supprimer', danger: true }))) return
   await $fetch(`/api/series/${s.id}`, { method: 'DELETE' })
   await refresh()
 }
@@ -32,7 +33,7 @@ async function remove(s: Series) {
   <div class="flex flex-col gap-8">
     <header class="flex flex-wrap items-end gap-4">
       <div>
-        <h1 class="text-2xl font-semibold">
+        <h1 class="text-3xl font-bold">
           Draft
         </h1>
         <p class="mt-1 text-sm text-zinc-400">
@@ -42,7 +43,7 @@ async function remove(s: Series) {
       <button
         v-if="!creating"
         type="button"
-        class="ml-auto cursor-pointer rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-300"
+        class="btn-action ml-auto cursor-pointer text-sm"
         @click="creating = true"
       >
         + Nouvelle série
@@ -51,7 +52,7 @@ async function remove(s: Series) {
 
     <NewSeriesForm v-if="creating" @close="creating = false" />
 
-    <p v-else-if="!series?.length" class="rounded-xl border border-dashed border-zinc-800 px-4 py-10 text-center text-sm text-zinc-500">
+    <p v-else-if="!series?.length" class="cut border-dashed px-4 py-10 text-center text-sm text-zinc-500 bg-zinc-900">
       Aucune série pour l’instant. Crée-en une pour commencer la draft.
     </p>
 
@@ -62,7 +63,7 @@ async function remove(s: Series) {
           :key="f.value"
           type="button"
           class="cursor-pointer rounded-full border px-3 py-1 text-sm"
-          :class="filter === f.value ? 'border-amber-400 bg-amber-400/10 text-amber-300' : 'border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200'"
+          :class="filter === f.value ? 'tab-on' : 'border-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 bg-zinc-900'"
           :aria-pressed="filter === f.value"
           @click="filter = f.value"
         >
@@ -74,8 +75,8 @@ async function remove(s: Series) {
         <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
           {{ group.title }} · {{ group.items.length }}
         </h2>
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <SeriesCard v-for="s in group.items" :key="s.id" :series="s" @remove="remove(s)" />
+        <div class="grid gap-3.5 lg:grid-cols-2">
+          <SeriesCard v-for="s in group.items" :key="s.id" :series="s" :icon-url="iconUrl" @remove="remove(s)" />
         </div>
       </div>
 

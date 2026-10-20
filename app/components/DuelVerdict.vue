@@ -62,7 +62,7 @@ const favours = (impact: number) => (impact > 0 ? props.names.blue : impact < 0 
         v-for="side in ([winner, otherSide(winner)] as const)"
         :key="side"
         class="flex flex-col gap-3 rounded-xl border bg-zinc-900/40 p-4"
-        :class="side === winner ? 'border-zinc-700' : 'border-zinc-800'"
+        :class="side === winner ? 'border-transparent bg-zinc-900' : 'border-transparent bg-zinc-900'"
       >
         <header class="flex flex-wrap items-center gap-2">
           <span class="font-semibold" :class="side === 'blue' ? 'text-side-blue' : 'text-side-red'">{{ names[side] }}</span>
@@ -79,7 +79,7 @@ const favours = (impact: number) => (impact > 0 ? props.names.blue : impact < 0 
         </p>
 
         <div>
-          <h4 class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-400">
+          <h4 class="mb-1 text-[11px] font-semibold uppercase font-display tracking-wider text-emerald-400">
             Points forts
           </h4>
           <ul class="list-inside list-disc text-sm text-zinc-300">
@@ -89,7 +89,7 @@ const favours = (impact: number) => (impact > 0 ? props.names.blue : impact < 0 
           </ul>
         </div>
         <div>
-          <h4 class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-red-400">
+          <h4 class="mb-1 text-[11px] font-semibold uppercase font-display tracking-wider text-red-400">
             Ce qui manque
           </h4>
           <ul class="list-inside list-disc text-sm text-zinc-300">
@@ -99,7 +99,7 @@ const favours = (impact: number) => (impact > 0 ? props.names.blue : impact < 0 
           </ul>
         </div>
         <div>
-          <h4 class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+          <h4 class="mb-1 text-[11px] font-semibold uppercase font-display tracking-wider text-zinc-400">
             Comment mieux drafter
           </h4>
           <p class="text-sm leading-relaxed text-zinc-300">
@@ -110,7 +110,7 @@ const favours = (impact: number) => (impact > 0 ? props.names.blue : impact < 0 
     </div>
 
     <!-- D'où vient le pourcentage -->
-    <details class="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-sm">
+    <details class="cut bg-zinc-900 px-4 py-3 text-sm">
       <summary class="cursor-pointer select-none font-medium text-zinc-300">
         Comment le pourcentage est calculé
       </summary>
