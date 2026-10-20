@@ -199,6 +199,10 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
             </span>
             <span class="text-xs tabular-nums text-zinc-500">{{ s.score.toFixed(2) }}</span>
           </button>
+          <!-- Why this champion: each point of the score, in words -->
+          <p class="px-1.5 pb-1 text-[11px] leading-snug text-zinc-500">
+            {{ s.reasons.join(' · ') }}
+          </p>
         </li>
       </ul>
     </div>

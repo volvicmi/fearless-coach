@@ -1,4 +1,4 @@
-import { DRAFT_ORDER, MAX_GAMES, NO_BAN, fearlessLocked, picksOf } from './draft'
+import { DRAFT_ORDER, MAX_GAMES, NO_BAN, fearlessLocked, otherSide, picksOf } from './draft'
 import type { DraftStep, FearlessMode, GameDraft, SeriesFormat } from './draft'
 import { ROLES } from './types'
 import type { Champion, Combo, Player, ProMeta, Role, Tier } from './types'
@@ -89,6 +89,19 @@ export function canFillAnyRole(champ: string, roles: Role[]): boolean {
 const isMage = (c?: Champion) => !!c?.tags.includes('Mage')
 const isMarksman = (c?: Champion) => !!c?.tags.includes('Marksman')
 
+/**
+ * What the other team looks like, from the Data Dragon tags of its picks (no statistics here).
+ * Used by the counter rules in suggestPicks.
+ */
+export function enemyProfile(picks: string[], byId: Map<string, Champion>) {
+  const tagsOf = picks.map(c => byId.get(c)?.tags ?? [])
+  const count = (tag: string) => tagsOf.filter(t => t.includes(tag)).length
+  return {
+    ranged: count('Marksman') + count('Mage'),
+    assassins: count('Assassin'),
+  }
+}
+
 /** Ranked pick suggestions for our team at the current step (empty when it isn't our pick). */
 export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
   const step = DRAFT_ORDER[ctx.game.actions.length]
@@ -112,6 +125,7 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
   }
 
   const proById = new Map((ctx.pro?.champions ?? []).map(c => [c.champId, c]))
+  const theirs = enemyProfile(picksOf(ctx.game.actions, otherSide(ctx.game.ourSide)), byId)
   const ourMages = ourPicks.filter(c => isMage(byId.get(c))).length
   const ourMarksmen = ourPicks.filter(c => isMarksman(byId.get(c))).length
 
@@ -162,6 +176,16 @@ export function suggestPicks(ctx: CoachContext, limit = 6): Suggestion[] {
       if (fearlessOn && (entry.tier === 'S' || entry.tier === 'A') && strongLeft <= gamesLeftAfterThis + 1) {
         score -= 0.2
         reasons.push(`Plus que ${strongLeft} S/A pour ${player.name} avec encore ${gamesLeftAfterThis} game(s) à jouer`)
+      }
+
+      // Counter rules (game knowledge, not statistics): poke wants an engage front line, assassins want peel.
+      if (theirs.ranged >= 2 && champ?.tags.includes('Tank')) {
+        score += 0.1
+        reasons.push(`Contre leur poke (${theirs.ranged} tireurs/mages) : engage et front line`)
+      }
+      if (theirs.assassins >= 1 && champ?.tags.includes('Support') && champ?.tags.includes('Tank')) {
+        score += 0.08
+        reasons.push('Contre leurs assassins : peel et protection')
       }
 
       if (ourPicks.length >= 2 && ourMages === 0 && isMage(champ)) {
