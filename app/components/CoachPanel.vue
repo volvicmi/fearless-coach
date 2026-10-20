@@ -78,8 +78,8 @@ function maybeAutoAsk() {
 }
 watch(() => props.ctx.game.actions.length, maybeAutoAsk)
 
-/** Saved answers of this game, newest first. Browsing them never changes the draft. */
-interface AdviceRecord { id: number, stepIndex: number, createdAt: string, result: CoachResult }
+/** Saved answers of this game, one per draft step, last step first. Browsing them never changes the draft. */
+interface AdviceRecord { id: number, stepIndex: number, result: CoachResult }
 const history = ref<AdviceRecord[]>([])
 /** Index in `history` being looked at (0 = newest saved), null = the live answer. */
 const viewIndex = ref<number | null>(null)
@@ -102,10 +102,6 @@ const stepChips = computed(() => {
   history.value.forEach((r, i) => { if (!newest.has(r.stepIndex)) newest.set(r.stepIndex, i) })
   return [...newest].sort((a, b) => a[0] - b[0]).map(([stepIndex, i]) => ({ stepIndex, i }))
 })
-function whenOf(createdAt: string) {
-  // SQLite stores UTC without a marker: add it so the browser shows local time.
-  return new Date(`${createdAt.replace(' ', 'T')}Z`).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
-}
 
 /** The answer on screen is for the draft as it is now (same number of picks and bans): its buttons work, live or from history. */
 const fresh = computed(() => (viewed.value
@@ -279,7 +275,7 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
           ‹ Plus ancien
         </button>
         <span class="text-center">
-          <template v-if="viewed">Conseil du {{ whenOf(viewed.createdAt) }} · étape {{ viewed.stepIndex + 1 }}</template>
+          <template v-if="viewed">Conseil de l’étape {{ viewed.stepIndex + 1 }}</template>
           <template v-else>Conseil en direct</template>
         </span>
         <button type="button" class="cursor-pointer px-1 hover:text-zinc-100 disabled:cursor-default disabled:opacity-30" :disabled="viewIndex === null" title="Conseil suivant" @click="browse(-1)">
