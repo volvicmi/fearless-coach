@@ -17,6 +17,9 @@ function modelChain(): string[] {
   return String(geminiModels).split(',').map(m => m.trim()).filter(Boolean)
 }
 
+/** A model that doesn't answer in time is skipped: the next one of the chain takes over. */
+const TIMEOUT_MS = 10_000
+
 async function callModel(model: string, prompt: CoachPrompt, schema: z.ZodType): Promise<string | undefined> {
   client ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   const response = await client.models.generateContent({
@@ -26,6 +29,7 @@ async function callModel(model: string, prompt: CoachPrompt, schema: z.ZodType):
       systemInstruction: `${prompt.system}\n\n${prompt.team}`,
       responseMimeType: 'application/json',
       responseJsonSchema: jsonSchemaOf(schema),
+      abortSignal: AbortSignal.timeout(TIMEOUT_MS),
       // Gemini 3 models: keep thinking short so advice arrives in a few seconds.
       ...(model.startsWith('gemini-3') && { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } }),
     },
@@ -53,8 +57,9 @@ export async function askGemini<S extends z.ZodType>(prompt: CoachPrompt, schema
         exhaustedUntil.set(model, Date.now() + SKIP_MS)
         continue
       }
-      // Surcharge passagère (500 / 503 / 504) : on essaie le modèle suivant, sans le mettre de côté.
-      if (err instanceof ApiError && [500, 503, 504].includes(err.status)) {
+      // Surcharge passagère (500 / 503 / 504) ou modèle trop lent : on essaie le modèle suivant, sans le mettre de côté.
+      const slow = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')
+      if (slow || (err instanceof ApiError && [500, 503, 504].includes(err.status))) {
         overloaded = true
         continue
       }
