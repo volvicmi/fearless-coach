@@ -19,6 +19,8 @@ function modelChain(): string[] {
 
 /** A model that doesn't answer in time is skipped: the next one of the chain takes over. */
 const TIMEOUT_MS = 10_000
+/** Au-delà de ce temps total, on arrête d'essayer des modèles : mieux vaut une erreur claire (ou le relais OpenRouter) qu'une longue attente. */
+const BUDGET_MS = 25_000
 
 async function callModel(model: string, prompt: CoachPrompt, schema: z.ZodType): Promise<string | undefined> {
   client ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
@@ -47,7 +49,9 @@ export async function askGemini<S extends z.ZodType>(prompt: CoachPrompt, schema
   }
 
   let overloaded = false
+  const started = Date.now()
   for (const model of candidates) {
+    if (Date.now() - started > BUDGET_MS) { overloaded = true; break }
     let text: string | undefined
     try {
       text = await callModel(model, prompt, schema)

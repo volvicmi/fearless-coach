@@ -19,6 +19,7 @@ export async function askOpenRouter<S extends z.ZodType>(prompt: CoachPrompt, sc
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
+    signal: AbortSignal.timeout(30_000),
     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: openrouterModel,
