@@ -23,6 +23,9 @@ const result = ref<CoachResult | null>(null)
 /** Draft length the result was computed for: anything else means it's outdated. */
 const resultAt = ref(-1)
 const loading = ref(false)
+/** Which AI answers: auto (server's choice) or one provider, to compare answers. Each answer shows its model. */
+const provider = ref<'auto' | 'gemini' | 'claude' | 'openrouter'>('auto')
+const providerBody = () => ({ gameId: props.gameId, provider: provider.value === 'auto' ? undefined : provider.value })
 const error = ref('')
 const auto = ref(false)
 
@@ -43,7 +46,7 @@ async function ask() {
   loading.value = true
   error.value = ''
   try {
-    const res = await $fetch<CoachResult>('/api/coach', { method: 'POST', body: { gameId: props.gameId } })
+    const res = await $fetch<CoachResult>('/api/coach', { method: 'POST', body: providerBody() })
     if (props.ctx.game.actions.length === at) { // ignore answers that arrive after the next click
       result.value = res
       resultAt.value = at
@@ -117,7 +120,7 @@ async function loadPlan() {
 async function makePlan() {
   planLoading.value = true
   planError.value = ''
-  try { gamePlan.value = await $fetch<GamePlan>('/api/coach/plan', { method: 'POST', body: { gameId: props.gameId } }) }
+  try { gamePlan.value = await $fetch<GamePlan>('/api/coach/plan', { method: 'POST', body: providerBody() }) }
   catch (e: any) { planError.value = e?.data?.statusMessage ?? 'Le plan est indisponible pour le moment' }
   finally { planLoading.value = false }
 }
@@ -218,6 +221,24 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
         >
           {{ copied ? 'Copié ✓' : 'Copier le contexte' }}
         </button>
+        <select
+          v-model="provider"
+          class="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-300"
+          title="Qui répond : automatique, ou un fournisseur précis pour comparer les réponses"
+        >
+          <option value="auto">
+            Auto
+          </option>
+          <option value="gemini">
+            Gemini
+          </option>
+          <option value="claude">
+            Claude
+          </option>
+          <option value="openrouter">
+            OpenRouter
+          </option>
+        </select>
         <button
           type="button"
           class="rounded-md bg-amber-400 px-3 py-1 text-xs font-semibold text-zinc-950 hover:bg-amber-300 disabled:opacity-40"

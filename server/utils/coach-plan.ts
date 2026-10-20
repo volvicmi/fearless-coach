@@ -7,6 +7,7 @@ import type { Role } from '#shared/types'
 import { buildCoachPrompt } from './coach-prompt'
 import type { CoachPrompt } from './coach-prompt'
 import { askAi } from './coach-ai'
+import type { Provider } from './coach-ai'
 
 /** Our game plan for a finished draft, lane by lane (bot = ADC + support). */
 export const PlanSchema = z.object({
@@ -84,9 +85,9 @@ export function buildPlanPrompt(ctx: CoachContext): CoachPrompt {
 }
 
 /** Builds the plan for a finished game with the AI. Nothing is stored here: the route does it. */
-export async function askPlan(ctx: CoachContext) {
+export async function askPlan(ctx: CoachContext, provider?: Provider) {
   const prompt = buildPlanPrompt(ctx)
   const started = Date.now()
-  const { raw, model } = await askAi(prompt, PlanSchema)
+  const { raw, model } = await askAi(prompt, PlanSchema, provider)
   return { ...raw, model, ms: Date.now() - started }
 }

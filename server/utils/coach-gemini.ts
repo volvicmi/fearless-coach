@@ -42,6 +42,7 @@ export async function askGemini<S extends z.ZodType>(prompt: CoachPrompt, schema
     throw createError({ statusCode: 429, statusMessage: 'Quota Gemini gratuit épuisé sur tous les modèles : réessaie plus tard ou utilise « Copier le contexte »' })
   }
 
+  let overloaded = false
   for (const model of candidates) {
     let text: string | undefined
     try {
@@ -50,6 +51,11 @@ export async function askGemini<S extends z.ZodType>(prompt: CoachPrompt, schema
     catch (err) {
       if (err instanceof ApiError && (err.status === 429 || err.status === 404)) {
         exhaustedUntil.set(model, Date.now() + SKIP_MS)
+        continue
+      }
+      // Surcharge passagère (500 / 503 / 504) : on essaie le modèle suivant, sans le mettre de côté.
+      if (err instanceof ApiError && [500, 503, 504].includes(err.status)) {
+        overloaded = true
         continue
       }
       if (err instanceof ApiError) {
@@ -66,6 +72,9 @@ export async function askGemini<S extends z.ZodType>(prompt: CoachPrompt, schema
     return { raw: parsed.data, model }
   }
 
+  if (overloaded) {
+    throw createError({ statusCode: 503, statusMessage: 'Gemini est surchargé en ce moment sur tous les modèles : réessaie dans une minute' })
+  }
   throw createError({ statusCode: 429, statusMessage: 'Quota Gemini gratuit épuisé sur tous les modèles : réessaie plus tard ou utilise « Copier le contexte »' })
 }
 
