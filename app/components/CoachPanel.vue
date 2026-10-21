@@ -40,6 +40,8 @@ onMounted(() => {
   loadHistory()
   loadPlan()
 })
+// Un conseil demandé par un coéquipier arrive tout seul (canal en direct du serveur).
+useLive('advice', () => { if (!loading.value) loadHistory() })
 watch(draftOnly, (on) => {
   try { localStorage.setItem('coach-draft-only', on ? '1' : '0') }
   catch {}
@@ -73,7 +75,7 @@ async function ask() {
 
 /** Auto mode asks on our turns and once for the final review; predictions stay manual to save quota. */
 function maybeAutoAsk() {
-  if (!auto.value || loading.value || resultAt.value === props.ctx.game.actions.length) return
+  if (!auto.value || loading.value || resultAt.value === props.ctx.game.actions.length || sharedLive.value) return
   if (mode.value === 'advice' || mode.value === 'review') ask()
 }
 watch(() => props.ctx.game.actions.length, maybeAutoAsk)
@@ -84,7 +86,11 @@ const history = ref<AdviceRecord[]>([])
 /** Index in `history` being looked at (0 = newest saved), null = the live answer. */
 const viewIndex = ref<number | null>(null)
 const viewed = computed(() => (viewIndex.value === null ? null : history.value[viewIndex.value] ?? null))
-const shown = computed(() => viewed.value?.result ?? result.value)
+/** Conseil déjà enregistré pour l'étape en cours, demandé par nous ou par un coéquipier. */
+const sharedLive = computed(() => history.value.find(r => r.stepIndex === props.ctx.game.actions.length)?.result ?? null)
+/** Notre réponse si elle est à jour, sinon celle d'un coéquipier pour cette étape. */
+const liveResult = computed(() => (result.value && resultAt.value === props.ctx.game.actions.length ? result.value : sharedLive.value ?? result.value))
+const shown = computed(() => viewed.value?.result ?? liveResult.value)
 
 async function loadHistory() {
   try { history.value = await $fetch<AdviceRecord[]>(`/api/games/${props.gameId}/advice`) }
@@ -106,7 +112,7 @@ const stepChips = computed(() => {
 /** The answer on screen is for the draft as it is now (same number of picks and bans): its buttons work, live or from history. */
 const fresh = computed(() => (viewed.value
   ? viewed.value.stepIndex === props.ctx.game.actions.length
-  : !!result.value && resultAt.value === props.ctx.game.actions.length))
+  : (!!result.value && resultAt.value === props.ctx.game.actions.length) || !!sharedLive.value))
 const advice = computed(() => (shown.value && shown.value.kind !== 'review' ? shown.value : null))
 const review = computed(() => (shown.value?.kind === 'review' ? shown.value : null))
 
