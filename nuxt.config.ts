@@ -20,7 +20,7 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
-      title: 'Fearless Coach',
+      title: 'Coach Opif',
       // Polices de la charte Régie (Google Fonts, gratuites)
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
