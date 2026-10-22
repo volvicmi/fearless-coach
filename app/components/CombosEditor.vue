@@ -102,6 +102,13 @@ function editNote(c: Combo, note: string) {
         Les suggestions et le coach IA mettent en avant le partenaire dès qu’un côté du combo est pické.
       </p>
 
+      <div
+        data-tier-drop="new"
+        class="flex min-h-14 items-center justify-center rounded-lg border-2 border-dashed border-transparent text-sm text-zinc-500 transition-colors bg-zinc-900"
+      >
+        Dépose un champion ici pour créer un combo (ou clique sur l’un d’eux dans la liste)
+      </div>
+
       <div class="flex gap-1" role="group" aria-label="Filtrer par rôle">
         <button
           v-for="r in ROLE_TABS"
@@ -176,12 +183,6 @@ function editNote(c: Combo, note: string) {
         </button>
       </div>
 
-      <div
-        data-tier-drop="new"
-        class="flex min-h-20 items-center justify-center rounded-lg border-2 border-dashed border-transparent text-sm text-zinc-500 transition-colors bg-zinc-900"
-      >
-        Dépose un champion ici pour créer un combo (ou clique sur l’un d’eux dans la liste)
-      </div>
     </div>
 
     <aside data-tier-drop="remove" class="cut flex flex-col gap-2 p-3 transition-colors xl:sticky xl:top-4 xl:h-[640px] bg-zinc-900">
