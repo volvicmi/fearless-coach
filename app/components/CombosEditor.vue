@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { Champion, Combo } from '#shared/types'
+import { CHAMPION_ROLES } from '#shared/champion-roles'
+import { PREP_ROLE_LABEL } from '#shared/prep'
+import { ROLES } from '#shared/types'
+import type { Champion, Combo, Role } from '#shared/types'
 import type { DropTarget } from '~/composables/useChampionDrag'
 
 const props = defineProps<{
@@ -9,6 +12,14 @@ const props = defineProps<{
 }>()
 
 const { data: combos, refresh } = await useFetch<Combo[]>('/api/combos')
+
+/** Tri par rôle du champion de départ (Top → Support), filtrable sur un seul rôle. */
+const roleFilter = ref<Role | ''>('')
+const ROLE_TABS = [{ id: '' as const, label: 'Tous' }, ...ROLES.map(role => ({ id: role, label: PREP_ROLE_LABEL[role] }))]
+const mainRole = (id: string) => ROLES.indexOf(CHAMPION_ROLES[id]?.[0] ?? 'support')
+const shown = computed(() => (combos.value ?? [])
+  .filter(c => !roleFilter.value || CHAMPION_ROLES[c.anchor]?.includes(roleFilter.value))
+  .sort((a, b) => mainRole(a.anchor) - mainRole(b.anchor)))
 
 /** Drop zones: "new" (start a combo), "a:<id>" (its champion), "p:<id>" (its partners), "remove" (the list). */
 const zoneId = (kind: 'a' | 'p', c: Combo) => `${kind}:${c.id}`
@@ -78,8 +89,21 @@ function editNote(c: Combo, note: string) {
         Les suggestions et le coach IA mettent en avant le partenaire dès qu’un côté du combo est pické.
       </p>
 
+      <div class="flex gap-1" role="group" aria-label="Filtrer par rôle">
+        <button
+          v-for="r in ROLE_TABS"
+          :key="r.id"
+          type="button"
+          class="cursor-pointer px-3 py-1.5 text-xs"
+          :class="roleFilter === r.id ? 'bg-zinc-800 text-zinc-100 shadow-[inset_0_-2px_0_var(--color-amber-400)]' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'"
+          @click="roleFilter = r.id"
+        >
+          {{ r.label }}
+        </button>
+      </div>
+
       <div
-        v-for="c in combos"
+        v-for="c in shown"
         :key="c.id"
         class="cut group/combo flex items-center gap-3 bg-zinc-900 p-2"
       >
