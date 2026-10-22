@@ -6,8 +6,9 @@ export default defineEventHandler(async (event) => {
   const anchor = await assertChampion(body.anchor)
   const partners = Array.isArray(body.partners) ? await Promise.all(body.partners.map(assertChampion)) : []
   const db = useDb()
-  const { last } = db.prepare('SELECT COALESCE(MAX(position), -1) AS last FROM combos').get() as { last: number }
+  // Un nouveau combo arrive en haut de la liste.
+  const { first } = db.prepare('SELECT COALESCE(MIN(position), 1) AS first FROM combos').get() as { first: number }
   const { lastInsertRowid } = db.prepare('INSERT INTO combos (anchor, partners, position) VALUES (?, ?, ?)')
-    .run(anchor, JSON.stringify(partners.filter(p => p !== anchor)), last + 1)
+    .run(anchor, JSON.stringify(partners.filter(p => p !== anchor)), first - 1)
   return toCombo(db.prepare('SELECT * FROM combos WHERE id = ?').get(lastInsertRowid))
 })
