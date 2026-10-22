@@ -13,13 +13,26 @@ const props = defineProps<{
 
 const { data: combos, refresh } = await useFetch<Combo[]>('/api/combos')
 
-/** Tri par rôle du champion de départ (Top → Support), filtrable sur un seul rôle. */
+/** Ordre choisi par glisser-déposer, filtrable sur le rôle du champion de départ. */
 const roleFilter = ref<Role | ''>('')
 const ROLE_TABS = [{ id: '' as const, label: 'Tous' }, ...ROLES.map(role => ({ id: role, label: PREP_ROLE_LABEL[role] }))]
-const mainRole = (id: string) => ROLES.indexOf(CHAMPION_ROLES[id]?.[0] ?? 'support')
 const shown = computed(() => (combos.value ?? [])
-  .filter(c => !roleFilter.value || CHAMPION_ROLES[c.anchor]?.includes(roleFilter.value))
-  .sort((a, b) => mainRole(a.anchor) - mainRole(b.anchor)))
+  .filter(c => !roleFilter.value || CHAMPION_ROLES[c.anchor]?.includes(roleFilter.value)))
+
+const list = ref<HTMLElement>()
+/** Place le combo `id` à l'endroit de `target` (avant ou après selon le sens du déplacement). */
+function moveCombo(id: number, target: number) {
+  const ids = combos.value!.map(c => c.id)
+  const down = ids.indexOf(id) < ids.indexOf(target)
+  ids.splice(ids.indexOf(id), 1)
+  ids.splice(ids.indexOf(target) + (down ? 1 : 0), 0, id)
+  combos.value = ids.map(i => combos.value!.find(c => c.id === i)!)
+}
+async function saveOrder() {
+  try { await $fetch('/api/combos/order', { method: 'PUT', body: { ids: combos.value!.map(c => c.id) } }) }
+  catch { await refresh() }
+}
+const { dragging } = useCardReorder(list, moveCombo, saveOrder)
 
 /** Drop zones: "new" (start a combo), "a:<id>" (its champion), "p:<id>" (its partners), "remove" (the list). */
 const zoneId = (kind: 'a' | 'p', c: Combo) => `${kind}:${c.id}`
@@ -83,7 +96,7 @@ function editNote(c: Combo, note: string) {
 
 <template>
   <div ref="root" class="grid select-none items-start gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-    <div class="flex flex-col gap-2">
+    <div ref="list" class="flex flex-col gap-2">
       <p class="text-sm text-zinc-400">
         Une ligne par champion avec les partenaires avec qui il est travaillé : Jhin + Shen / Camille / Alistar, Kai'Sa + Nautilus / Leona…
         Les suggestions et le coach IA mettent en avant le partenaire dès qu’un côté du combo est pické.
@@ -105,7 +118,9 @@ function editNote(c: Combo, note: string) {
       <div
         v-for="c in shown"
         :key="c.id"
-        class="cut group/combo flex items-center gap-3 bg-zinc-900 p-2"
+        :data-card-id="c.id"
+        class="cut group/combo flex cursor-grab items-center gap-3 bg-zinc-900 p-2"
+        :class="{ 'opacity-20': dragging === c.id }"
       >
         <!-- The champion of the combo -->
         <div :data-tier-drop="zoneId('a', c)" class="rounded-lg p-1 transition-colors">

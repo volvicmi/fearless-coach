@@ -72,8 +72,8 @@ export function useCardReorder(root: Ref<HTMLElement | undefined>, move: (id: nu
 
   function onDown(e: PointerEvent) {
     if (e.button !== 0 || pending) return
-    // Les boutons d'une carte (supprimer…) restent de simples boutons.
-    if ((e.target as HTMLElement).closest('button')) return
+    // Boutons, champs et champions déplaçables gardent leur propre comportement.
+    if ((e.target as HTMLElement).closest('button, input, textarea, select, [data-drag-champ]')) return
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-card-id]')
     if (!el) return
     pending = { el, id: Number(el.dataset.cardId) }
