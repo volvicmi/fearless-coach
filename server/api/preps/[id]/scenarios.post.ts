@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const source = copyFrom ? db.prepare('SELECT * FROM prep_scenarios WHERE id = ? AND prep_id = ?').get(Number(copyFrom), prepId) as any : null
 
   const { lastInsertRowid } = db.prepare(`
-    INSERT INTO prep_scenarios (prep_id, name, color, our_side, slots, notes, position, pick_roles, combos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO prep_scenarios (prep_id, name, color, our_side, slots, notes, position, pick_roles, combos, pick_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     prepId,
     source ? `${source.name} (copie)` : `Draft ${n + 1}`,
@@ -22,6 +22,7 @@ export default defineEventHandler(async (event) => {
     last + 1,
     source?.pick_roles ?? '[]',
     source?.combos ?? '[]',
+    source?.pick_notes ?? '[]',
   )
   return toScenario(db.prepare('SELECT * FROM prep_scenarios WHERE id = ?').get(lastInsertRowid))
 })

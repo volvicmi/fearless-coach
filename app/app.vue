@@ -6,11 +6,11 @@ const fitScreen = computed(() => route.meta.fitScreen === true)
 const draftActive = computed(() => route.path === '/' || route.path.startsWith('/series') || route.path.startsWith('/duel'))
 
 const tabs = [
-  { to: '/prep', label: 'Prep' },
-  { to: '/champions', label: 'Champions' },
-  { to: '/team', label: 'Team' },
+  { to: '/prep', label: 'Compo' },
+  { to: '/team', label: 'Champpool' },
+  { to: '/champions', label: 'Data' },
   { to: '/planning', label: 'Planning' },
-  { to: '/pro', label: 'Pro' },
+  { to: '/pro', label: 'Pro stats' },
   { to: '/notes', label: 'Notes' },
 ]
 // Mot de passe de l'équipe : `enabled` est faux en local tant qu'il n'est pas configuré.
@@ -30,7 +30,7 @@ const tabClass = 'px-3.5 py-2 text-zinc-500 transition-colors hover:bg-zinc-900 
       </NuxtLink>
       <nav v-if="route.path !== '/login'" class="flex max-w-full gap-1 overflow-x-auto font-display text-sm font-semibold uppercase tracking-[0.08em]">
         <NuxtLink to="/" :class="[tabClass, draftActive && 'tab-on']">
-          Draft
+          Drafter
         </NuxtLink>
         <NuxtLink v-for="t in tabs" :key="t.to" :to="t.to" :class="tabClass" active-class="tab-on">
           {{ t.label }}
@@ -54,8 +54,5 @@ const tabClass = 'px-3.5 py-2 text-zinc-500 transition-colors hover:bg-zinc-900 
       <NuxtPage />
     </main>
     <ConfirmDialog />
-    <footer class="px-6 text-center text-xs text-zinc-600" :class="route.meta.prepLayout ? 'py-2' : 'py-4'">
-      Fearless Coach n'est pas approuvé par Riot Games et ne reflète pas les opinions de Riot Games ou de quiconque ayant officiellement participé à la production ou à la gestion de Riot Games. Riot Games et toutes les propriétés associées sont des marques commerciales ou déposées de Riot Games, Inc.
-    </footer>
   </div>
 </template>

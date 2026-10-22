@@ -1,6 +1,6 @@
 import { DRAFT_ORDER } from '#shared/draft'
 import { ROLES, SCENARIO_COLORS } from '#shared/types'
-import type { Prep, PrepCombo, PrepScenario, Role } from '#shared/types'
+import type { Prep, PrepCombo, PrepScenario, Role, ScenarioColor } from '#shared/types'
 import { inferPrepRoles, MAX_PREP_COMBOS, prepComboKey } from '#shared/prep'
 
 /** Up to this many alternatives per draft step. */
@@ -23,18 +23,28 @@ export function toPrep(row: any): Prep {
 export function toScenario(row: any): PrepScenario {
   const slots = JSON.parse(row.slots) as string[][]
   const storedRoles = JSON.parse(row.pick_roles ?? '[]') as Role[]
+  const pickNotes = JSON.parse(row.pick_notes ?? '[]') as string[]
   return {
     id: row.id,
     prepId: row.prep_id,
     name: row.name,
     color: row.color,
+    styles: row.styles ? JSON.parse(row.styles) : [row.color],
+    rank: row.gallery_rank ?? null,
     ourSide: row.our_side,
     slots,
     notes: row.notes,
     position: row.position,
     pickRoles: storedRoles.length === 5 ? storedRoles : inferPrepRoles(slots, row.our_side),
     combos: JSON.parse(row.combos ?? '[]'),
+    pickNotes: Array.from({ length: 5 }, (_, i) => String(pickNotes[i] ?? '')),
   }
+}
+
+/** Une note courte par pick (cinq, dans l'ordre de la draft). */
+export function validatePickNotes(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length !== 5) throw createError({ statusCode: 400, statusMessage: 'Cinq notes de pick attendues' })
+  return value.map(n => String(n ?? '').slice(0, 500))
 }
 
 export function validatePrepRoles(value: unknown): Role[] {
@@ -96,6 +106,12 @@ export function loadPreparedDrafts(opponent: string | undefined, limit = 8): Pre
     .filter(s => s.slots.some(alts => alts.length))
     .sort((a, b) => Number(b.matchesOpponent) - Number(a.matchesOpponent))
     .slice(0, limit)
+}
+
+/** Zéro à trois tags de style, sans doublon, dans l'ordre de SCENARIO_COLORS. */
+export function validateStyles(value: unknown): ScenarioColor[] {
+  if (!Array.isArray(value) || !value.every(c => SCENARIO_COLORS.includes(c))) throw createError({ statusCode: 400, statusMessage: 'Style invalide' })
+  return SCENARIO_COLORS.filter(c => value.includes(c))
 }
 
 export function validateColor(color: unknown): string {

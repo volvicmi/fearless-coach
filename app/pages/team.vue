@@ -11,11 +11,8 @@ const nameOf = (id: string) => byId.value.get(id)?.name ?? id
 const form = reactive({ name: '', role: 'top' as Role })
 const selectedId = ref<number | null>(team.value?.[0]?.id ?? null)
 const selected = computed(() => team.value?.find(p => p.id === selectedId.value) ?? team.value?.[0])
-/** One player's pool, or the team's combos */
-const view = ref<'player' | 'combos'>('player')
 function openPlayer(id: number) {
   selectedId.value = id
-  view.value = 'player'
 }
 
 async function addPlayer() {
@@ -61,7 +58,7 @@ const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID'
         :key="p.id"
         type="button"
         class="flex items-center gap-2 px-3.5 py-2 text-sm transition-colors"
-        :class="view === 'player' && p.id === selected?.id ? 'tab-on' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'"
+        :class="p.id === selected?.id ? 'tab-on' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'"
         @click="openPlayer(p.id)"
       >
         <span class="font-display text-[11px] font-bold tracking-wider text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>
@@ -72,27 +69,13 @@ const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID'
       <span v-if="missingRoles.length" class="self-center text-xs text-amber-300/80">
         Manquants : <span class="capitalize">{{ missingRoles.join(', ') }}</span>
       </span>
-      <button
-        type="button"
-        class="ml-auto flex items-center gap-2 px-3.5 py-2 text-sm transition-colors"
-        :class="view === 'combos' ? 'tab-on' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'"
-        @click="view = 'combos'"
-      >
-        Combos
-      </button>
     </nav>
     <p v-else class="text-sm text-zinc-500">
       Aucun joueur pour l’instant : ajoute tes cinq joueurs ci-dessus.
     </p>
 
-    <CombosEditor
-      v-if="view === 'combos'"
-      :champions="champions"
-      :icon-url="iconUrl"
-      :name-of="nameOf"
-    />
     <PlayerCard
-      v-else-if="selected"
+      v-if="selected"
       :key="selected.id"
       :player="selected"
       :champions="champions"

@@ -188,6 +188,11 @@ export function useDb(): DatabaseSync {
   // Métadonnées de la préparation : les drafts existantes restent intactes.
   addColumn(db, 'prep_scenarios', 'pick_roles', "TEXT NOT NULL DEFAULT '[]'")
   addColumn(db, 'prep_scenarios', 'combos', "TEXT NOT NULL DEFAULT '[]'")
+  addColumn(db, 'prep_scenarios', 'pick_notes', "TEXT NOT NULL DEFAULT '[]'")
+  // Tags de style (plusieurs possibles) ; NULL = anciennes drafts, qui gardent leur `color` unique.
+  addColumn(db, 'prep_scenarios', 'styles', 'TEXT')
+  // Ordre choisi dans la galerie (plus petit = en premier) ; NULL = jamais rangée.
+  addColumn(db, 'prep_scenarios', 'gallery_rank', 'INTEGER')
   allowPracticeTier(db)
   // Draft colours became draft styles: anything else falls back to "engage".
   db.exec(`UPDATE prep_scenarios SET color = 'engage' WHERE color NOT IN ('engage', 'poke', 'front-to-back')`)

@@ -33,6 +33,9 @@ const role = ref<Role | null>(null)
 const criterion = ref<CriterionId | null>(null)
 const search = ref('')
 const board = ref<HTMLElement>()
+/** Data : classement des champions par domaine, ou combos de l'équipe. */
+const VIEWS = [{ id: 'champions', label: 'Champions' }, { id: 'combos', label: 'Combos' }] as const
+const view = ref<'champions' | 'combos'>('champions')
 
 const hint = computed(() => CRITERIA.find(c => c.id === criterion.value)?.hint)
 /** Champions that can fill the chosen role (all of them without a role). */
@@ -77,15 +80,25 @@ useChampionDrag(board, (champId: string, target: DropTarget, index?: number) =>
 </script>
 
 <template>
-  <div ref="board" class="flex min-h-0 flex-1 flex-col gap-4 select-none">
-    <div>
-      <h1 class="text-3xl font-bold">
-        Champions
-      </h1>
-      <p class="text-sm text-zinc-400">
-        Choisis un domaine pour classer les champions en tiers S / A / B / C. Glisse-les, ajoute-les depuis la grille, retire-les en les lâchant sur la grille.
-      </p>
+  <div class="flex min-h-0 flex-1 flex-col gap-4">
+    <div class="flex flex-wrap items-end gap-4">
+      <div>
+        <h1 class="text-3xl font-bold">
+          Data
+        </h1>
+        <p class="text-sm text-zinc-400">
+          {{ view === 'champions' ? 'Choisis un domaine pour classer les champions en tiers S / A / B / C. Glisse-les, ajoute-les depuis la grille, retire-les en les lâchant sur la grille.' : 'Un champion et ses partenaires : les duos que l’équipe aime jouer.' }}
+        </p>
+      </div>
+      <nav class="ml-auto flex gap-1 bg-zinc-900 p-1.5">
+        <button v-for="t in VIEWS" :key="t.id" type="button" class="cursor-pointer px-3.5 py-2 text-sm transition-colors" :class="view === t.id ? 'tab-on' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'" @click="view = t.id">
+          {{ t.label }}
+        </button>
+      </nav>
     </div>
+    <CombosEditor v-if="view === 'combos'" :champions="champions" :icon-url="iconUrl" :name-of="nameOf" />
+    <!-- v-show : le glisser-déposer reste branché sur ce bloc -->
+    <div v-show="view === 'champions'" ref="board" class="flex min-h-0 flex-1 flex-col gap-4 select-none">
 
     <div class="flex flex-wrap items-center gap-2 text-sm">
       <span class="text-zinc-400">Rôle</span>
@@ -185,6 +198,7 @@ useChampionDrag(board, (champId: string, target: DropTarget, index?: number) =>
           <span class="w-full truncate text-center text-[11px] text-zinc-300">{{ c.name }}</span>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>

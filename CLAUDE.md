@@ -20,7 +20,7 @@ Ce fichier décrit **le projet tel qu'il existe** et fixe les règles de travail
 |---|---|
 | **Draft** | Deux modes de série (BO1/3/5, côté, score). **Équipe** : board de draft à 20 étapes, verrous Fearless, coach IA (conseil sur notre tour, prédiction sur le leur, review en fin de draft avec winrate estimé). **Duel 1v1** : deux joueurs draftent l'un contre l'autre, sans conseil IA ; à la fin de chaque draft l'IA désigne le vainqueur (voir §5). L'accueil montre les séries en cartes (En cours / Terminées). |
 | **Prep** | Galerie des compositions filtrable par préparation, champion et type Engage / Poke / Front to back. Au clic : cinq rôles avec splash arts, alternatives, combos entre deux picks, bans et sélecteur latéral. **Seulement notre côté** ; l'ordre réel du tournoi reste stocké même si l'affichage est trié par rôle. La première option est le choix principal. Rôles et combos sont enregistrés par composition et copiés à la duplication ; appliquer un duo conserve les précédents choix comme alternatives. |
-| **Équipe** | Un onglet par joueur : tier list S/A/B/C + ligne Practice (glisser-déposer, ordre dans le tier = force), stats ranked (SoloQ / Flex via l'API Riot). Onglet **Combos** : un champion et ses partenaires (Jhin + Shen / Camille / Alistar…). |
+| **Équipe** | Un onglet par joueur : tier list S/A/B/C + ligne Practice (glisser-déposer, ordre dans le tier = force), stats ranked (SoloQ / Flex via l'API Riot). Les **Combos** (un champion et ses partenaires) sont dans l’onglet Data. |
 | **Planning** | Jours habituels par joueur (heure, 21:00 par défaut), exceptions par date, vue semaine avec l'état du cinq de départ, rappel Discord hebdomadaire par webhook. |
 | **Pro** | Stats champions et vraies drafts pro importées de gol.gg (LCK / LEC), tri par colonne, tournoi en cours. |
 | **Notes** | Notes libres en markdown envoyées au coach IA à chaque demande. |
@@ -101,7 +101,7 @@ Data Dragon (Riot) : champions et icônes
 - Côtés : bandeaux pleins `bg-side-blue` / `bg-side-red`, texte blanc. Dégradé de la corne (`--horn`) réservé à ce qui est actif.
 - Référence visuelle : `../charte/propositions/charte-opif.html` (variante C2 Régie).
 - Interdit : logos Riot/LoL, assets du client hors Data Dragon.
-- Pied de page légal obligatoire (« Legal Jibber Jabber » de Riot), en français.
+- Pas de pied de page légal Riot (« Legal Jibber Jabber ») : retiré à la demande de l’équipe, l’outil est privé. À remettre si le site devient public.
 - Pas de texte sélectionnable pendant les glisser-déposer ; curseur pointer sur tout ce qui est cliquable.
 
 ## 8. Règles de travail pour Claude Code

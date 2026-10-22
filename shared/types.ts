@@ -200,6 +200,10 @@ export interface PrepScenario {
   prepId: number
   name: string
   color: ScenarioColor
+  /** Tags de style (zéro à trois) ; `color` garde le premier pour l'ancien code. */
+  styles: ScenarioColor[]
+  /** Place choisie dans la galerie (plus petit = en premier), null si jamais rangée. */
+  rank: number | null
   ourSide: 'blue' | 'red'
   /** 20 entries, one per DRAFT_ORDER step */
   slots: string[][]
@@ -209,6 +213,8 @@ export interface PrepScenario {
   pickRoles: Role[]
   /** Duos propres à cette composition, avec des indices de pick stables lors d'un changement de côté. */
   combos: PrepCombo[]
+  /** Une note par pick, dans l'ordre de la draft (B1…B5 ou R1…R5). */
+  pickNotes: string[]
 }
 
 export interface Prep {
@@ -218,7 +224,7 @@ export interface Prep {
   createdAt: string
   scenarioCount?: number
   /** Light copy of the drafts, for previews in the prep list */
-  scenarios?: Pick<PrepScenario, 'id' | 'name' | 'color' | 'ourSide' | 'slots' | 'pickRoles'>[]
+  scenarios?: Pick<PrepScenario, 'id' | 'name' | 'color' | 'styles' | 'rank' | 'ourSide' | 'slots' | 'pickRoles' | 'notes'>[]
 }
 
 export interface PrepDetail {
