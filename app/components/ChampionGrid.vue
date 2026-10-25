@@ -49,6 +49,8 @@ function onEnter() {
 }
 
 onMounted(() => input.value?.focus())
+/** Remet le curseur dans la recherche (après un clic sur un emplacement ou un bouton). */
+defineExpose({ focus: () => input.value?.focus() })
 </script>
 
 <template>

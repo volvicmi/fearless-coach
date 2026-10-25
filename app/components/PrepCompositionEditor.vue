@@ -10,6 +10,7 @@ const props = defineProps<{ scenario: PrepScenario, champions: Champion[], nameO
 const emit = defineEmits<{ update: [patch: Partial<PrepScenario>], remove: [] }>()
 const root = ref<HTMLElement>()
 const picker = ref<HTMLElement>()
+const searchInput = ref<HTMLInputElement>()
 const search = ref('')
 const roleFilter = ref<Role | ''>('')
 /** `option` = index remplacé au prochain clic sur un champion ; `null` = ajout d'une alternative. */
@@ -42,7 +43,12 @@ const pickerTitle = computed(() => {
   return selectedChoices.value.length ? 'Ajouter une alternative' : 'Choisir un champion'
 })
 
-function revealPicker() { if (import.meta.client && window.matchMedia('(max-width: 900px)').matches) void nextTick(() => picker.value?.scrollIntoView({ block: 'start', behavior: 'auto' })) }
+/** Sur ordinateur, le curseur va dans la recherche : on tape le champion puis Entrée. Sur téléphone, on fait défiler jusqu'au choix. */
+function revealPicker() {
+  if (!import.meta.client) return
+  if (window.matchMedia('(max-width: 900px)').matches) void nextTick(() => picker.value?.scrollIntoView({ block: 'start', behavior: 'auto' }))
+  else void nextTick(() => searchInput.value?.focus())
+}
 function select(step: number, option: number | null) {
   // Une étape vide : le prochain champion devient le choix principal.
   selected.value = { step, option: choices(step).length ? option : 0 }
@@ -72,6 +78,7 @@ function chooseChampion(id: string) {
   if (option !== null && option < list.length) list[option] = id
   else { list.push(id); selected.value.option = list.length - 1 }
   updateSlots(slots); feedback.value = `${props.nameOf(id)} enregistré pour ${label(selected.value.step)}.`
+  search.value = ''; searchInput.value?.focus()
 }
 function removeOption(step: number, position: number) {
   const slots = props.scenario.slots.map(s => [...s]); slots[step]!.splice(position, 1); updateSlots(slots)
@@ -141,7 +148,7 @@ useChampionDrag(root, (id, destination, index, from) => {
       </section>
       <aside ref="picker" class="prep-picker" data-tier-drop="remove" aria-label="Choisir un champion">
         <p class="prep-eyebrow">{{ label(selected.step) }} · {{ pickerTitle }}</p>
-        <label class="prep-search"><span class="sr-only">Rechercher un champion</span><input v-model="search" type="search" placeholder="Chercher un champion…" @keydown.enter.prevent="filteredChampions.find(c => !disabled(c.id)) && chooseChampion(filteredChampions.find(c => !disabled(c.id))!.id)"></label>
+        <label class="prep-search"><span class="sr-only">Rechercher un champion</span><input ref="searchInput" v-model="search" type="search" placeholder="Chercher un champion…" @keydown.enter.prevent="filteredChampions.find(c => !disabled(c.id)) && chooseChampion(filteredChampions.find(c => !disabled(c.id))!.id)"></label>
         <div class="prep-role-filters" role="group" aria-label="Filtrer les champions par rôle"><button type="button" :aria-pressed="!roleFilter" @click="roleFilter = ''">Tous</button><button v-for="r in ROLES" :key="r" type="button" :aria-pressed="roleFilter === r" @click="roleFilter = r">{{ PREP_ROLE_LABEL[r] }}</button></div>
         <div class="prep-champion-grid"><button v-for="c in filteredChampions" :key="c.id" class="prep-champion" type="button" :disabled="disabled(c.id)" :title="c.name" :aria-label="`Choisir ${c.name}`" :data-drag-champ="!disabled(c.id) ? c.id : undefined" @click="chooseChampion(c.id)"><img :src="iconUrl(c.id)" alt="" loading="lazy" draggable="false"></button><p v-if="!filteredChampions.length" class="prep-picker-help">Aucun résultat.</p></div>
       </aside>

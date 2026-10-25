@@ -39,10 +39,13 @@ const actor = computed(() => {
   return { step: `${current.value.side === 'blue' ? 'Bleu' : 'Rouge'} ${current.value.type} ${current.value.slot + 1}`, who }
 })
 
-const play = (champ: string) => emit('update', [...props.game.actions, champ])
+const grid = ref<{ focus: () => void }>()
+// Après chaque action, le curseur revient dans la recherche : on tape le champion suivant puis Entrée.
+const play = (champ: string) => { emit('update', [...props.game.actions, champ]); grid.value?.focus() }
 async function undo() {
   if (done.value && props.confirmUndo && !(await askConfirm(props.confirmUndo, { confirmLabel: 'Revenir en arrière' }))) return
   emit('update', props.game.actions.slice(0, -1))
+  grid.value?.focus()
 }
 
 function onKey(e: KeyboardEvent) {
@@ -106,6 +109,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
 
       <ChampionGrid
+        ref="grid"
         class="flex-1"
         :champions="champions"
         :disabled="disabled"
