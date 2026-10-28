@@ -46,6 +46,8 @@ export interface Game {
   winner: Side | null
   /** Duel : verdict de l'IA une fois la draft terminée */
   verdict?: DuelVerdict | null
+  /** Rôles des picks adverses fixés à la main (id du champion -> rôle) ; les autres sont devinés */
+  enemyRoles: Record<string, Role>
 }
 
 /** Jugement d'un côté dans un duel. */

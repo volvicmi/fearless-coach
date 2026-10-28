@@ -208,6 +208,10 @@ export function useDb(): DatabaseSync {
   addColumn(db, 'series', 'player_b', "TEXT NOT NULL DEFAULT ''")
   // Verdict de l'IA (JSON) d'une draft de duel terminée.
   addColumn(db, 'games', 'verdict', 'TEXT')
+  // Jeton secret du favori « Sync Coach » (synchro en direct depuis drafter.lol).
+  addColumn(db, 'series', 'sync_token', "TEXT NOT NULL DEFAULT ''")
+  // Rôles des picks adverses choisis à la main pendant la draft live (JSON : champion -> rôle).
+  addColumn(db, 'games', 'enemy_roles', "TEXT NOT NULL DEFAULT '{}'")
   seedTraits(db)
   return db
 }
@@ -311,5 +315,6 @@ export function toGame(row: any): Game {
     actions: JSON.parse(row.actions),
     winner: row.winner,
     verdict: row.verdict ? JSON.parse(row.verdict) : null,
+    enemyRoles: JSON.parse(row.enemy_roles ?? '{}'),
   }
 }

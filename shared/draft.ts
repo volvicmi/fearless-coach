@@ -1,3 +1,4 @@
+import type { Role } from './types'
 export type Side = 'blue' | 'red'
 export type ActionType = 'ban' | 'pick'
 /** 'hard' = Fearless draft, 'off' = normal draft (stored as is in the database) */
@@ -43,6 +44,8 @@ export interface GameDraft {
   /** Champion ids (Data Dragon `id`) in DRAFT_ORDER order; its length is the current step. */
   actions: string[]
   winner?: Side | null
+  /** Rôles des picks adverses fixés à la main (id du champion -> rôle) */
+  enemyRoles?: Record<string, Role>
 }
 
 export const otherSide = (side: Side): Side => (side === 'blue' ? 'red' : 'blue')

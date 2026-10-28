@@ -23,7 +23,10 @@ async function addPlayer() {
   selectedId.value = id
 }
 
-const missingRoles = computed(() => ROLES.filter(r => !team.value?.some(p => p.role === r)))
+const starters = computed(() => (team.value ?? []).filter(p => p.status !== 'sub'))
+const subs = computed(() => (team.value ?? []).filter(p => p.status === 'sub'))
+/** Rôles sans titulaire. */
+const missingRoles = computed(() => ROLES.filter(r => !starters.value.some(p => p.role === r)))
 const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID', adc: 'ADC', support: 'SUP' }
 </script>
 
@@ -51,22 +54,37 @@ const ROLE_SHORT: Record<Role, string> = { top: 'TOP', jungle: 'JGL', mid: 'MID'
       </form>
     </div>
 
-    <!-- One tab per player -->
+    <!-- One tab per player: the starting five first, substitutes after, more discreet -->
     <nav v-if="team?.length" class="flex flex-wrap items-center gap-1 bg-zinc-900 p-1.5">
       <button
-        v-for="p in team"
+        v-for="p in starters"
         :key="p.id"
         type="button"
-        class="flex items-center gap-2 px-3.5 py-2 text-sm transition-colors"
-        :class="p.id === selected?.id ? 'tab-on' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'"
+        class="flex cursor-pointer items-center gap-2 transition-colors px-3.5 py-2 text-sm"
+        :class="p.id === selected?.id ? 'tab-on' : 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'"
         @click="openPlayer(p.id)"
       >
-        <span class="font-display text-[11px] font-bold tracking-wider text-zinc-500">{{ ROLE_SHORT[p.role] }}</span>
+        <span class="px-1.5 py-0.5 font-display text-[11px] font-bold tracking-wider" :class="p.id === selected?.id ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-700 text-zinc-100'">{{ ROLE_SHORT[p.role] }}</span>
         {{ p.name }}
-        <span v-if="p.status === 'sub'" class="rounded bg-zinc-800 px-1 text-[10px] uppercase text-zinc-400">remp.</span>
         <span class="text-xs text-zinc-500">{{ p.pool.filter(e => e.tier !== 'P').length }}</span>
       </button>
-      <span v-if="missingRoles.length" class="self-center text-xs text-amber-300/80">
+      <template v-if="subs.length">
+        <span class="mx-2 h-6 w-px bg-zinc-700" aria-hidden="true" />
+        <span class="font-display text-[11px] uppercase tracking-wider text-zinc-600">Remplaçants</span>
+      <button
+        v-for="p in subs"
+        :key="p.id"
+        type="button"
+        class="flex cursor-pointer items-center gap-2 transition-colors px-2.5 py-1.5 text-xs"
+        :class="p.id === selected?.id ? 'tab-on' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-100'"
+        @click="openPlayer(p.id)"
+      >
+        <span class="px-1.5 py-0.5 font-display text-[11px] font-bold tracking-wider" :class="p.id === selected?.id ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-800 text-zinc-400'">{{ ROLE_SHORT[p.role] }}</span>
+        {{ p.name }}
+        <span class="text-xs text-zinc-500">{{ p.pool.filter(e => e.tier !== 'P').length }}</span>
+      </button>
+      </template>
+      <span v-if="missingRoles.length" class="ml-auto self-center text-xs text-amber-300/80">
         Manquants : <span class="capitalize">{{ missingRoles.join(', ') }}</span>
       </span>
     </nav>

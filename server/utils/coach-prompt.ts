@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { z } from 'zod'
 import { DRAFT_ORDER, NO_BAN, fearlessLocked, otherSide, picksOf, slotsOf } from '#shared/draft'
 import type { DraftStep, FearlessMode, SeriesFormat, Side } from '#shared/draft'
-import { assignRoles, canFillAnyRole, freeRolesOf, stepLabel, suggestPicks, unavailableNow } from '#shared/coach'
+import { assignRoles, canFillAnyRole, enemyRoles, freeRolesOf, stepLabel, suggestPicks, unavailableNow } from '#shared/coach'
 import { estimateWinRate } from '#shared/winrate'
 import { CRITERIA } from '#shared/champion-traits'
 import type { CoachContext } from '#shared/coach'
@@ -242,15 +242,23 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
 
   // Our picks with the role our pools suggest, so the model doesn't guess our lanes.
   const ourRoles = assignRoles(picksOf(ctx.game.actions, us), ctx.team)
+  // Their roles: set by hand by our coach (certain) or guessed from each champion's usual role.
+  const forced = ctx.game.enemyRoles ?? {}
+  const theirRoles = enemyRoles(picksOf(ctx.game.actions, them), forced)
+  const roleText = (side: Side, c: string) => {
+    if (side === us) return ourRoles.has(c) ? ` (${ourRoles.get(c)})` : ''
+    const role = theirRoles.get(c)
+    return role ? ` (${role}, ${forced[c] ? 'confirmed' : 'guessed'})` : ''
+  }
   const picksText = (side: Side) => slotsOf(ctx.game.actions, side, 'pick')
     .filter((c): c is string => !!c)
-    .map(c => (side === us && ourRoles.has(c) ? `${nameOf(c)} (${ourRoles.get(c)})` : nameOf(c)))
+    .map(c => nameOf(c) + roleText(side, c))
     .join(', ') || 'none'
 
   const locked = [...fearlessLocked(ctx.fearless, ctx.games, ctx.game).keys()].map(nameOf)
   const blocked = unavailableNow(ctx)
   // Their roles still open (from their picks): a prediction must be a champion that can fill one of them.
-  const theirFree = freeRolesOf(picksOf(ctx.game.actions, them))
+  const theirFree = freeRolesOf(picksOf(ctx.game.actions, them), forced)
   const fitsTheirRoles = (id: string) => mode !== 'prediction' || canFillAnyRole(id, theirFree)
   const available = ctx.champions.filter(c => !blocked.has(c.id) && fitsTheirRoles(c.id)).map(c => c.id)
   const shortlist = mode === 'advice'
@@ -314,7 +322,7 @@ export function finalizeAdvice(ctx: CoachContext, raw: RawAdvice, model: string,
     .map(r => ({ ...r, champId: resolve(r.champion) }))
     .filter((r): r is typeof r & { champId: string } => !!r.champId && !blocked.has(r.champId))
     // A predicted pick must fit a role the enemy still has to fill.
-    .filter(r => mode !== 'prediction' || canFillAnyRole(r.champId, freeRolesOf(picksOf(ctx.game.actions, otherSide(ctx.game.ourSide)))))
+    .filter(r => mode !== 'prediction' || canFillAnyRole(r.champId, freeRolesOf(picksOf(ctx.game.actions, otherSide(ctx.game.ourSide)), ctx.game.enemyRoles ?? {})))
     .slice(0, 3)
     .map(({ champId, player, confidence, reason }) => ({ champId, player: mode === 'advice' ? player : null, confidence, reason }))
 

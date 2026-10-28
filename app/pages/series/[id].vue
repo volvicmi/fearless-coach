@@ -22,6 +22,8 @@ const { data: pro } = await useFetch<{ meta: ProMeta }>('/api/pro')
 const { data: combos } = await useFetch<Combo[]>('/api/combos')
 
 const activeN = ref(data.value.games.at(-1)?.n ?? 1)
+// Une nouvelle game arrive (synchro drafter.lol ou autre navigateur) : on l'affiche.
+watch(() => data.value?.games.at(-1)?.n, (n, before) => { if (n && before && n > before) activeN.value = n })
 const game = computed(() => data.value?.games.find(g => g.n === activeN.value))
 const series = computed(() => data.value!.series)
 const SIDE_LABEL: Record<Side, string> = { blue: 'Bleu', red: 'Rouge' }
@@ -75,6 +77,7 @@ async function nextGame() {
       </div>
 
       <nav class="ml-auto flex items-center gap-1">
+        <DrafterSync :series-id="series.id" class="mr-2" />
         <button
           v-for="g in data.games"
           :key="g.id"
@@ -138,6 +141,7 @@ async function nextGame() {
           :icon-url="iconUrl"
           :name-of="nameOf"
           @update="actions => patchGame(game!, { actions })"
+          @roles="enemyRoles => patchGame(game!, { enemyRoles })"
         />
 
         <CoachPanel

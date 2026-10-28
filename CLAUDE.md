@@ -90,6 +90,7 @@ Data Dragon (Riot) : champions et icônes
 - **Data Dragon** : champions et icônes (aujourd'hui `en_US`, passage à `fr_FR` prévu).
 - **API Riot** : clé de développement (24 h) dans `.env` (`RIOT_API_KEY`), client limité en débit (`server/utils/riot.ts`). Bouton « Riot API key » en haut à droite pour la régénérer.
 - **gol.gg** : **exception assumée** à la règle « pas de scraping ». Pages autorisées par leur robots.txt, une requête par seconde, User-Agent honnête, cache en base (une série terminée n'est jamais relue).
+- **drafter.lol (synchro en direct)** : bouton « Sync drafter.lol » d’une série → favori « Sync Coach » à lancer dans l’onglet drafter.lol de l’utilisateur. Il relit les 20 cases toutes les 400 ms (classes `.blue-ban`, `.red-ban` en miroir, `.blue-pick`, `.red-pick` ; icônes `/champions/<clé Riot>`, splashes `/splashes/<nom>`, « None ») et envoie l’état complet à `POST /api/sync/<jeton>` (route publique, jeton secret par série). Les swaps sont donc repris tels quels. Notre serveur ne contacte jamais drafter.lol ; si leur page change, c’est ce favori (`app/components/DrafterSync.vue`) qu’il faut adapter.
 - Aucun autre site de stats (lolalytics, u.gg, op.gg…) sans en discuter d'abord.
 
 ## 7. Design (charte « Régie », Opif Gaming)

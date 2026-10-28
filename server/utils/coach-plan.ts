@@ -1,8 +1,7 @@
 import { z } from 'zod'
 import { picksOf, otherSide } from '#shared/draft'
-import { assignRoles } from '#shared/coach'
+import { assignRoles, enemyRoles } from '#shared/coach'
 import type { CoachContext } from '#shared/coach'
-import { CHAMPION_ROLES } from '#shared/champion-roles'
 import type { Role } from '#shared/types'
 import { buildCoachPrompt } from './coach-prompt'
 import type { CoachPrompt } from './coach-prompt'
@@ -45,7 +44,7 @@ function lanesText(ctx: CoachContext, nameOf: (id: string) => string): string {
   const us = ctx.game.ourSide
   const them = otherSide(us)
   const ours = assignRoles(picksOf(ctx.game.actions, us), ctx.team)
-  const theirs = rolesOfPicks(picksOf(ctx.game.actions, them))
+  const theirs = enemyRoles(picksOf(ctx.game.actions, them), ctx.game.enemyRoles)
   const names = (map: Map<string, Role>, roles: Role[]) => [...map]
     .filter(([, r]) => roles.includes(r))
     .map(([c]) => nameOf(c))
@@ -54,20 +53,6 @@ function lanesText(ctx: CoachContext, nameOf: (id: string) => string): string {
     const t = names(theirs, roles).join(' + ') || '(rôle non attribué)'
     return `- ${lane}: nous ${o} vs eux ${t}`
   }).join('\n')
-}
-
-/** Greedy, like freeRolesOf: each pick takes its first role not taken yet. */
-function rolesOfPicks(picks: string[]): Map<string, Role> {
-  const taken = new Set<Role>()
-  const out = new Map<string, Role>()
-  for (const champ of picks) {
-    const role = CHAMPION_ROLES[champ]?.find(r => !taken.has(r))
-    if (role) {
-      taken.add(role)
-      out.set(champ, role)
-    }
-  }
-  return out
 }
 
 export function buildPlanPrompt(ctx: CoachContext): CoachPrompt {

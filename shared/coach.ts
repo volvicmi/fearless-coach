@@ -70,15 +70,24 @@ export function assignRoles(picks: string[], team: Player[]): Map<string, Role> 
 }
 
 /**
- * Roles the other team still has to fill, from its picks and the usual role of each champion.
- * Each pick takes its first free role; a champion missing from CHAMPION_ROLES closes none.
+ * Role of each enemy pick: the role we set by hand first (`forced`, champion id -> role),
+ * then each other pick takes its first usual role still free. A champion missing from CHAMPION_ROLES gets none.
  */
-export function freeRolesOf(picks: string[]): Role[] {
-  const taken = new Set<Role>()
+export function enemyRoles(picks: string[], forced: Record<string, Role> = {}): Map<string, Role> {
+  const out = new Map<string, Role>()
+  for (const champ of picks) if (forced[champ]) out.set(champ, forced[champ])
+  const taken = new Set(out.values())
   for (const champ of picks) {
+    if (out.has(champ)) continue
     const role = CHAMPION_ROLES[champ]?.find(r => !taken.has(r))
-    if (role) taken.add(role)
+    if (role) { taken.add(role); out.set(champ, role) }
   }
+  return out
+}
+
+/** Roles the other team still has to fill, from its picks (and the roles we set by hand). */
+export function freeRolesOf(picks: string[], forced: Record<string, Role> = {}): Role[] {
+  const taken = new Set(enemyRoles(picks, forced).values())
   return ROLES.filter(r => !taken.has(r))
 }
 
