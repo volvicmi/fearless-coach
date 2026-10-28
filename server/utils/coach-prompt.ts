@@ -111,16 +111,22 @@ export function contextBlock(): string {
     .join('\n\n')
 }
 
-/** Loads everything the coach needs for one game. */
-export async function loadCoachContext(gameId: number, draftOnly = false): Promise<CoachContext> {
+/**
+ * Loads everything the coach needs for one game. `atStep` (index of a past step) rewinds the draft to that moment:
+ * an advice missed live (AI down, no time) can be asked again afterwards, with the board as it was.
+ */
+export async function loadCoachContext(gameId: number, draftOnly = false, atStep?: number): Promise<CoachContext> {
   const db = useDb()
   const gameRow = db.prepare('SELECT * FROM games WHERE id = ?').get(gameId)
   if (!gameRow) throw createError({ statusCode: 404, statusMessage: 'Game introuvable' })
-  const game = toGame(gameRow)
+  const saved = toGame(gameRow)
+  const rewind = Number.isInteger(atStep) && atStep! >= 0 && atStep! < saved.actions.length
+  const game = rewind ? { ...saved, actions: saved.actions.slice(0, atStep) } : saved
   const series = db.prepare('SELECT format, fearless, opponent, mode FROM series WHERE id = ?').get(game.seriesId) as { format: SeriesFormat, fearless: FearlessMode, opponent: string, mode: string }
   // En duel, personne n'est conseillé pendant la draft : l'IA ne parle qu'à la fin, via le verdict.
   if (series.mode === 'duel') throw createError({ statusCode: 400, statusMessage: 'Pas de conseil IA en duel : l’IA donne son verdict à la fin de la draft' })
   const games = (db.prepare('SELECT * FROM games WHERE series_id = ? ORDER BY n').all(game.seriesId) as any[]).map(toGame)
+    .map(g => (g.id === game.id ? game : g))
   const { champions } = await getChampions()
   return {
     game, games, fearless: series.fearless, format: series.format, team: draftOnly ? [] : loadTeam(), champions,

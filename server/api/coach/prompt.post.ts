@@ -4,9 +4,9 @@ const ANSWER_FORMAT = {
   review: 'Answer in French, for each team: estimated win rate (blue + red = 100), archetype, win conditions, power spikes, game plan, how to counter it. End with a verdict.',
 }
 
-/** The full coach prompt as plain text, to paste into any free AI chat: `{ gameId }`. */
+/** The full coach prompt as plain text, to paste into any free AI chat: `{ gameId, draftOnly?, step? }`. */
 export default defineEventHandler(async (event) => {
-  const { gameId, draftOnly } = await readBody(event) ?? {}
-  const prompt = buildCoachPrompt(await loadCoachContext(Number(gameId), draftOnly === true))
+  const { gameId, draftOnly, step } = await readBody(event) ?? {}
+  const prompt = buildCoachPrompt(await loadCoachContext(Number(gameId), draftOnly === true, step === undefined || step === null ? undefined : Number(step)))
   return { text: [prompt.system, prompt.team, prompt.request, ANSWER_FORMAT[prompt.mode]].join('\n\n') }
 })

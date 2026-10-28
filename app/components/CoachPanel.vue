@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DRAFT_ORDER, otherSide, picksOf } from '#shared/draft'
-import { suggestPicks, unavailableNow } from '#shared/coach'
+import { stepLabel, suggestPicks, unavailableNow } from '#shared/coach'
 import { estimateWinRate } from '#shared/winrate'
 import type { CoachContext } from '#shared/coach'
 import type { CoachMode, CoachResult } from '#shared/types'
@@ -28,6 +28,12 @@ const provider = ref<'auto' | 'gemini' | 'claude' | 'openrouter'>('auto')
 /** « Draft seule » : l'IA ne reçoit ni pools ni combos, seulement la draft (réglage retenu dans le navigateur) */
 const draftOnly = ref(true)
 const providerBody = () => ({ gameId: props.gameId, provider: provider.value === 'auto' ? undefined : provider.value, draftOnly: draftOnly.value })
+
+/** Étape passée à redemander (null = l'étape en cours) : le coach revoit la draft telle qu'elle était à ce moment-là. */
+const askStep = ref<number | null>(null)
+const pastSteps = computed(() => props.ctx.game.actions.map((_, i) => ({ i, label: `É${i + 1} · ${stepLabel(DRAFT_ORDER[i]!, props.ctx.game.ourSide)}` })).reverse())
+watch(() => props.ctx.game.actions.length, (n) => { if (askStep.value !== null && askStep.value >= n) askStep.value = null })
+const askMode = computed<CoachMode>(() => (askStep.value === null ? mode.value : DRAFT_ORDER[askStep.value]!.side === props.ctx.game.ourSide ? 'advice' : 'prediction'))
 const error = ref('')
 const auto = ref(false)
 
@@ -54,11 +60,18 @@ watch(auto, (on) => {
 
 async function ask() {
   const at = props.ctx.game.actions.length
+  const past = askStep.value
   loading.value = true
   error.value = ''
   try {
-    const res = await $fetch<CoachResult>('/api/coach', { method: 'POST', body: providerBody() })
-    if (props.ctx.game.actions.length === at) { // ignore answers that arrive after the next click
+    const res = await $fetch<CoachResult>('/api/coach', { method: 'POST', body: { ...providerBody(), step: past ?? undefined } })
+    if (past !== null) {
+      // Conseil d'une étape passée : on l'affiche depuis l'historique, à sa place.
+      await loadHistory()
+      const i = history.value.findIndex(r => r.stepIndex === past)
+      viewIndex.value = i >= 0 ? i : null
+    }
+    else if (props.ctx.game.actions.length === at) { // ignore answers that arrive after the next click
       result.value = res
       resultAt.value = at
       viewIndex.value = null
@@ -141,7 +154,7 @@ const copied = ref(false)
 async function copyContext() {
   error.value = ''
   try {
-    const { text } = await $fetch<{ text: string }>('/api/coach/prompt', { method: 'POST', body: { gameId: props.gameId, draftOnly: draftOnly.value } })
+    const { text } = await $fetch<{ text: string }>('/api/coach/prompt', { method: 'POST', body: { gameId: props.gameId, draftOnly: draftOnly.value, step: askStep.value ?? undefined } })
     await navigator.clipboard.writeText(text)
     copied.value = true
     setTimeout(() => (copied.value = false), 2000)
@@ -258,13 +271,27 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
             OpenRouter
           </option>
         </select>
+        <!-- Revenir à une étape passée : redemander un conseil raté en direct (IA en panne, plus le temps) -->
+        <select
+          v-if="pastSteps.length"
+          v-model="askStep"
+          class="max-w-44 bg-zinc-800 px-2 py-1 text-xs text-zinc-300"
+          title="Redemander le conseil d'une étape passée, avec la draft telle qu'elle était"
+        >
+          <option :value="null">
+            {{ mode === 'review' ? 'Draft complète' : 'Étape en cours' }}
+          </option>
+          <option v-for="s in pastSteps" :key="s.i" :value="s.i">
+            {{ s.label }}
+          </option>
+        </select>
         <button
           type="button"
           class="btn-action text-xs disabled:opacity-40"
           :disabled="loading"
           @click="ask"
         >
-          {{ loading ? 'Réflexion…' : ASK_LABEL[mode] }}
+          {{ loading ? 'Réflexion…' : ASK_LABEL[askMode] }}
         </button>
       </div>
 
@@ -305,11 +332,11 @@ const champsOf = (side: 'blue' | 'red') => picksOf(props.ctx.game.actions, side)
       </div>
 
       <!-- Our turn: advice / their turn: prediction -->
-      <div v-if="advice" class="flex flex-col gap-2" :class="!fresh && 'opacity-40'">
+      <div v-if="advice" class="flex flex-col gap-2" :class="!fresh && 'opacity-75'">
         <p class="text-xs text-zinc-500">
           <span v-if="advice.kind === 'prediction'" class="font-semibold text-side-red">Prédiction · </span>
           {{ advice.step }} · {{ advice.model }} · {{ (advice.ms / 1000).toFixed(1) }}s
-          <span v-if="!fresh" class="text-amber-300"> · obsolète, la draft a avancé</span>
+          <span v-if="!fresh" class="text-amber-300"> · étape passée, la draft a avancé</span>
         </p>
         <button
           v-for="r in advice.recommendations"
