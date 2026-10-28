@@ -8,7 +8,7 @@ export function useGameSave(data: Ref<SeriesDetail | null | undefined>, refresh:
   let queue: Promise<unknown> = Promise.resolve()
 
   /** `body` part au serveur ; `local` ne change que l'affichage (ce que le serveur recalcule lui-même). */
-  function patchGame(g: Game, body: Partial<Pick<Game, 'actions' | 'winner' | 'ourSide' | 'enemyRoles'>>, local: Partial<Game> = {}) {
+  function patchGame(g: Game, body: Partial<Pick<Game, 'actions' | 'winner' | 'ourSide' | 'pickRoles'>>, local: Partial<Game> = {}) {
     // useFetch renvoie un shallowRef : on remplace l'objet au lieu de le modifier.
     const next = { ...g, ...body, ...local }
     data.value = { ...data.value!, games: data.value!.games.map(x => (x.id === g.id ? next : x)) }

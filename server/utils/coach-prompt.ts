@@ -3,11 +3,11 @@ import { resolve } from 'node:path'
 import { z } from 'zod'
 import { DRAFT_ORDER, NO_BAN, fearlessLocked, otherSide, picksOf, slotsOf } from '#shared/draft'
 import type { DraftStep, FearlessMode, SeriesFormat, Side } from '#shared/draft'
-import { assignRoles, canFillAnyRole, enemyRoles, freeRolesOf, stepLabel, suggestPicks, unavailableNow } from '#shared/coach'
+import { assignRoles, canFillAnyRole, rolesOfSide, freeRolesOf, stepLabel, suggestPicks, unavailableNow } from '#shared/coach'
 import { estimateWinRate } from '#shared/winrate'
 import { CRITERIA } from '#shared/champion-traits'
 import type { CoachContext } from '#shared/coach'
-import type { CoachAdvice, CoachMode, CoachReview, Combo, Player, ProDraft, ProMeta } from '#shared/types'
+import type { CoachAdvice, CoachMode, CoachReview, Combo, Player, ProDraft, ProMeta, Role } from '#shared/types'
 import { loadProMatchups, loadProMeta } from './pro'
 import { loadPreparedDrafts } from './prep'
 import type { PreparedDraft } from './prep'
@@ -70,7 +70,9 @@ Each request ends with a TASK. There are three kinds of task.
 ADVICE (our turn): give the best options for the step we must play.
 - Only use champions from the AVAILABLE list. Write each champion as its Data Dragon id exactly as listed. Name the player who would play a pick.
 - Think about the draft as a whole: what composition we are building, how the pick synergises with our picks already locked (engage + follow-up, bot lane duo, jungle-mid 2v2, wombo combos), what it does against their picks, damage mix, engage/disengage, scaling vs early power, flex picks that hide roles.
-- Start from what the draft needs (missing roles, missing damage type, frontline, engage, answers to their threats), list the champions that fit it, then check which of them our players can play. Recommend a pick outside every pool when the draft clearly calls for it, and say the player would need to practise it. Never recommend a champion just because it sits in a pool.
+- Start from what the draft needs (missing roles, missing damage type, frontline, engage, answers to their threats), list the champions that fit it, then check which of them our players can play.
+- Roles: a pick must fill one of OUR FREE ROLES. Roles marked "confirmed" were set by our coach: never question them.
+- Damage mix: read OUR DAMAGE. When our damage dealers are mostly one type, strongly prefer a pick that adds the other type (an AP top or mid when the carries are AD, and the reverse), unless the comp clearly assumes it. Recommend a pick outside every pool when the draft clearly calls for it, and say the player would need to practise it. Never recommend a champion just because it sits in a pool.
 - Fearless economy: avoid burning a player's last comfort picks early in a long series; remember which strong champions the enemy has already lost.
 - Bans: target what threatens the comp we are building, what the enemy has shown comfort on, and the strongest available meta picks.
 - The pool hints are a fast, pool-based heuristic: ignore them when the draft points elsewhere.
@@ -241,15 +243,17 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
   })
 
   // Our picks with the role our pools suggest, so the model doesn't guess our lanes.
-  const ourRoles = assignRoles(picksOf(ctx.game.actions, us), ctx.team)
-  // Their roles: set by hand by our coach (certain) or guessed from each champion's usual role.
-  const forced = ctx.game.enemyRoles ?? {}
-  const theirRoles = enemyRoles(picksOf(ctx.game.actions, them), forced)
+  // Roles of both sides: set by hand by our coach (confirmed), else from our pools (our side), else each champion's usual role (guessed).
+  const forced = ctx.game.pickRoles ?? {}
+  const sideRoles = {
+    [us]: rolesOfSide(picksOf(ctx.game.actions, us), forced, assignRoles(picksOf(ctx.game.actions, us), ctx.team)),
+    [them]: rolesOfSide(picksOf(ctx.game.actions, them), forced),
+  } as Record<Side, Map<string, Role>>
   const roleText = (side: Side, c: string) => {
-    if (side === us) return ourRoles.has(c) ? ` (${ourRoles.get(c)})` : ''
-    const role = theirRoles.get(c)
+    const role = sideRoles[side].get(c)
     return role ? ` (${role}, ${forced[c] ? 'confirmed' : 'guessed'})` : ''
   }
+  const ourFree = freeRolesOf(picksOf(ctx.game.actions, us), Object.fromEntries(sideRoles[us]))
   const picksText = (side: Side) => slotsOf(ctx.game.actions, side, 'pick')
     .filter((c): c is string => !!c)
     .map(c => nameOf(c) + roleText(side, c))
@@ -278,6 +282,27 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
     return `${side === us ? 'OUR' : 'THEIR'} COMP READ (tags from our Champions tab, approximate): ${covered.join(' | ') || 'nothing yet'}. Not covered: ${missing.join(', ')}.`
   }
 
+  // Damage type of each pick from its Data Dragon tags (approximate): mages deal magic damage, the rest of the carries physical.
+  const tagsOf = new Map(ctx.champions.map(c => [c.id, c.tags]))
+  const damageLine = (side: Side) => {
+    const magic: string[] = []
+    const physical: string[] = []
+    const utility: string[] = []
+    for (const id of picksOf(ctx.game.actions, side)) {
+      const tags = tagsOf.get(id) ?? []
+      // Tag principal « Support » (Lulu…) : utilitaire, pas une source de dégâts ; Orianna (Mage, Support) reste une mage.
+      if (tags[0] === 'Support') utility.push(nameOf(id))
+      else if (tags.includes('Mage')) magic.push(nameOf(id))
+      else if (tags.some(t => ['Marksman', 'Fighter', 'Assassin'].includes(t))) physical.push(nameOf(id))
+      else utility.push(nameOf(id))
+    }
+    const lean = !magic.length && physical.length ? ' -> NO magic damage yet'
+      : !physical.length && magic.length ? ' -> NO physical damage yet'
+        : physical.length > magic.length ? ' -> leans physical: an extra magic source is valuable'
+          : magic.length > physical.length ? ' -> leans magic: an extra physical source is valuable' : ''
+    return `${side === us ? 'OUR' : 'THEIR'} DAMAGE (Data Dragon tags, approximate): magic: ${magic.join(', ') || 'none'} | physical: ${physical.join(', ') || 'none'}${utility.length ? ` | tank/utility: ${utility.join(', ')}` : ''}${lean}`
+  }
+
   const estimate = mode === 'review' ? estimateWinRate(ctx) : null
   const task = mode === 'review'
     ? `DATA ESTIMATE: blue ${estimate!.blue}% / red ${100 - estimate!.blue}%\n${estimate!.factors.map(f => `- ${f.label} (${f.impact >= 0 ? '+' : ''}${f.impact} pts for blue): ${f.detail}`).join('\n') || '- no data factor'}\n\nTASK: REVIEW. We were ${us}, they were ${them}. Analyse both compositions.`
@@ -294,6 +319,9 @@ export function buildCoachPrompt(ctx: CoachContext): CoachPrompt {
     `THEIR PICKS (${them}): ${picksText(them)}`,
     compLine(us),
     compLine(them),
+    damageLine(us),
+    damageLine(them),
+    mode === 'advice' ? `OUR FREE ROLES (still to fill): ${ourFree.join(', ') || 'none'}. A pick must fill one of them.` : '',
     mode === 'prediction' ? `THEIR FREE ROLES (still to fill): ${theirFree.join(', ') || 'none'}. Only predict champions that can play one of these roles.` : '',
     ctx.draftOnly ? '' : preparedDraftsBlock(loadPreparedDrafts(ctx.opponent), ctx.opponent, nameOf),
     ctx.draftOnly ? 'DRAFT ONLY MODE: no player pools, combos or prepared drafts are given. Recommend purely from the draft (both compositions, counters, synergies, pro precedents) and set player to null.' : '',
@@ -322,7 +350,7 @@ export function finalizeAdvice(ctx: CoachContext, raw: RawAdvice, model: string,
     .map(r => ({ ...r, champId: resolve(r.champion) }))
     .filter((r): r is typeof r & { champId: string } => !!r.champId && !blocked.has(r.champId))
     // A predicted pick must fit a role the enemy still has to fill.
-    .filter(r => mode !== 'prediction' || canFillAnyRole(r.champId, freeRolesOf(picksOf(ctx.game.actions, otherSide(ctx.game.ourSide)), ctx.game.enemyRoles ?? {})))
+    .filter(r => mode !== 'prediction' || canFillAnyRole(r.champId, freeRolesOf(picksOf(ctx.game.actions, otherSide(ctx.game.ourSide)), ctx.game.pickRoles ?? {})))
     .slice(0, 3)
     .map(({ champId, player, confidence, reason }) => ({ champId, player: mode === 'advice' ? player : null, confidence, reason }))
 

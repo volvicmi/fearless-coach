@@ -14,7 +14,7 @@ const props = defineProps<{
   current?: DraftStep
   iconUrl: (id: string) => string
   nameOf: (id: string) => string
-  /** Côté adverse en mode équipe : rôle de chaque pick (fixé à la main ou deviné), modifiable */
+  /** Mode équipe : rôle de chaque pick (fixé à la main ou deviné), modifiable */
   roles?: Map<string, Role>
   forcedRoles?: Record<string, Role>
 }>()

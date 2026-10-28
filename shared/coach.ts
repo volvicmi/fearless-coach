@@ -70,13 +70,18 @@ export function assignRoles(picks: string[], team: Player[]): Map<string, Role> 
 }
 
 /**
- * Role of each enemy pick: the role we set by hand first (`forced`, champion id -> role),
- * then each other pick takes its first usual role still free. A champion missing from CHAMPION_ROLES gets none.
+ * Role of each pick of one side: the role set by hand first (`forced`, champion id -> role),
+ * then `base` (for our side: the roles our pools suggest), then each other pick takes its first usual role still free.
+ * A champion missing from CHAMPION_ROLES gets none.
  */
-export function enemyRoles(picks: string[], forced: Record<string, Role> = {}): Map<string, Role> {
+export function rolesOfSide(picks: string[], forced: Record<string, Role> = {}, base = new Map<string, Role>()): Map<string, Role> {
   const out = new Map<string, Role>()
   for (const champ of picks) if (forced[champ]) out.set(champ, forced[champ])
   const taken = new Set(out.values())
+  for (const champ of picks) {
+    const role = base.get(champ)
+    if (!out.has(champ) && role && !taken.has(role)) { taken.add(role); out.set(champ, role) }
+  }
   for (const champ of picks) {
     if (out.has(champ)) continue
     const role = CHAMPION_ROLES[champ]?.find(r => !taken.has(r))
@@ -85,9 +90,9 @@ export function enemyRoles(picks: string[], forced: Record<string, Role> = {}): 
   return out
 }
 
-/** Roles the other team still has to fill, from its picks (and the roles we set by hand). */
+/** Roles a team still has to fill, from its picks (and the roles we set by hand). */
 export function freeRolesOf(picks: string[], forced: Record<string, Role> = {}): Role[] {
-  const taken = new Set(enemyRoles(picks, forced).values())
+  const taken = new Set(rolesOfSide(picks, forced).values())
   return ROLES.filter(r => !taken.has(r))
 }
 

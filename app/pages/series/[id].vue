@@ -141,7 +141,7 @@ async function nextGame() {
           :icon-url="iconUrl"
           :name-of="nameOf"
           @update="actions => patchGame(game!, { actions })"
-          @roles="enemyRoles => patchGame(game!, { enemyRoles })"
+          @roles="pickRoles => patchGame(game!, { pickRoles })"
         />
 
         <CoachPanel

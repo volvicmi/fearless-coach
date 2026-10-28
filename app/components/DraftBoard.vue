@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { DRAFT_ORDER, NO_BAN, fearlessLocked, otherSide, picksOf } from '#shared/draft'
+import { DRAFT_ORDER, NO_BAN, fearlessLocked, picksOf } from '#shared/draft'
 import type { FearlessMode, Side } from '#shared/draft'
-import { enemyRoles } from '#shared/coach'
+import { rolesOfSide } from '#shared/coach'
 import type { Champion, Game, Role } from '#shared/types'
 
 const props = defineProps<{
@@ -18,14 +18,16 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ update: [actions: string[]], roles: [roles: Record<string, Role>] }>()
 
-/** Mode équipe : rôles des picks adverses, fixés à la main ou devinés (pas en duel). */
-const enemySide = computed(() => otherSide(props.game.ourSide))
-const theirRoles = computed(() => props.labels ? undefined : enemyRoles(picksOf(props.game.actions, enemySide.value), props.game.enemyRoles ?? {}))
-function setRole(champ: string, role: Role | null) {
-  const next = { ...props.game.enemyRoles }
+/** Mode équipe : rôle de chaque pick des deux côtés, fixé à la main ou deviné (pas en duel). Le coach s'en sert. */
+const sideRoles = (side: Side) => props.labels ? undefined : rolesOfSide(picksOf(props.game.actions, side), props.game.pickRoles ?? {})
+const blueRoles = computed(() => sideRoles('blue'))
+const redRoles = computed(() => sideRoles('red'))
+function setRole(side: Side, champ: string, role: Role | null) {
+  const next = { ...props.game.pickRoles }
   if (role) {
-    // Un rôle n'appartient qu'à un champion : l'ancien titulaire repasse en « deviné ».
-    for (const [c, r] of Object.entries(next)) if (r === role) delete next[c]
+    // Un rôle n'appartient qu'à un champion de ce côté : l'ancien titulaire repasse en « deviné ».
+    const mine = picksOf(props.game.actions, side)
+    for (const [c, r] of Object.entries(next)) if (r === role && mine.includes(c)) delete next[c]
     next[champ] = role
   }
   else delete next[champ]
@@ -91,9 +93,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       :current="current"
       :icon-url="iconUrl"
       :name-of="nameOf"
-      :roles="enemySide === 'blue' ? theirRoles : undefined"
-      :forced-roles="game.enemyRoles"
-      @role="setRole"
+      :roles="blueRoles"
+      :forced-roles="game.pickRoles"
+      @role="(champ, role) => setRole('blue', champ, role)"
     />
 
     <div class="flex min-h-0 flex-col gap-3 lg:h-[70vh]">
@@ -145,9 +147,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       :current="current"
       :icon-url="iconUrl"
       :name-of="nameOf"
-      :roles="enemySide === 'red' ? theirRoles : undefined"
-      :forced-roles="game.enemyRoles"
-      @role="setRole"
+      :roles="redRoles"
+      :forced-roles="game.pickRoles"
+      @role="(champ, role) => setRole('red', champ, role)"
     />
   </div>
 </template>

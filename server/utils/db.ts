@@ -315,6 +315,6 @@ export function toGame(row: any): Game {
     actions: JSON.parse(row.actions),
     winner: row.winner,
     verdict: row.verdict ? JSON.parse(row.verdict) : null,
-    enemyRoles: JSON.parse(row.enemy_roles ?? '{}'),
+    pickRoles: JSON.parse(row.enemy_roles ?? '{}'),
   }
 }

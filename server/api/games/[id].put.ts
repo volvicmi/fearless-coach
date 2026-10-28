@@ -5,7 +5,7 @@ import type { Role } from '#shared/types'
 import { publishChange } from '../../utils/live'
 import { seatOf, sideOfSeat } from '../../utils/duel-seats'
 
-/** Partial update of a game: `actions`, `winner` (or null), `ourSide` and/or `enemyRoles`. */
+/** Partial update of a game: `actions`, `winner` (or null), `ourSide` and/or `pickRoles`. */
 export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
   const body = await readBody(event) ?? {}
@@ -46,8 +46,8 @@ export default defineEventHandler(async (event) => {
     if (![null, 'blue', 'red'].includes(body.winner)) throw createError({ statusCode: 400, statusMessage: 'Gagnant invalide' })
     db.prepare('UPDATE games SET winner = ? WHERE id = ?').run(body.winner, id)
   }
-  if (body.enemyRoles !== undefined) {
-    const roles = body.enemyRoles
+  if (body.pickRoles !== undefined) {
+    const roles = body.pickRoles
     const ok = roles && typeof roles === 'object' && !Array.isArray(roles)
       && Object.entries(roles).every(([c, r]) => typeof c === 'string' && ROLES.includes(r as Role))
     if (!ok) throw createError({ statusCode: 400, statusMessage: 'Rôles invalides' })

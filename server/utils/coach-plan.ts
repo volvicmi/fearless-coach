@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { picksOf, otherSide } from '#shared/draft'
-import { assignRoles, enemyRoles } from '#shared/coach'
+import { assignRoles, rolesOfSide } from '#shared/coach'
 import type { CoachContext } from '#shared/coach'
 import type { Role } from '#shared/types'
 import { buildCoachPrompt } from './coach-prompt'
@@ -44,7 +44,7 @@ function lanesText(ctx: CoachContext, nameOf: (id: string) => string): string {
   const us = ctx.game.ourSide
   const them = otherSide(us)
   const ours = assignRoles(picksOf(ctx.game.actions, us), ctx.team)
-  const theirs = enemyRoles(picksOf(ctx.game.actions, them), ctx.game.enemyRoles)
+  const theirs = rolesOfSide(picksOf(ctx.game.actions, them), ctx.game.pickRoles)
   const names = (map: Map<string, Role>, roles: Role[]) => [...map]
     .filter(([, r]) => roles.includes(r))
     .map(([c]) => nameOf(c))

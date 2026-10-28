@@ -45,7 +45,7 @@ export interface GameDraft {
   actions: string[]
   winner?: Side | null
   /** Rôles des picks adverses fixés à la main (id du champion -> rôle) */
-  enemyRoles?: Record<string, Role>
+  pickRoles?: Record<string, Role>
 }
 
 export const otherSide = (side: Side): Side => (side === 'blue' ? 'red' : 'blue')
